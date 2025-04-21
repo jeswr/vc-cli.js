@@ -9,9 +9,23 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jeswr/vc-cli.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jeswr/vc-cli.js/issues"
+  },
+  "keywords": [
+    "vc",
+    "verifiable-credentials",
+    "cli",
+    "digital-identity"
+  ],
+  "homepage": "https://github.com/jeswr/vc-cli.js#readme",
+  "author": "Jesse Wright <jesse@jeswr.org>",
   "license": "MIT",
-  "description": "",
+  "description": "A CLI tool for creating and managing Verifiable Credentials",
   "dependencies": {
     "@digitalbazaar/bbs-2023-cryptosuite": "^2.0.1",
     "@digitalbazaar/bls12-381-multikey": "^2.1.0",
@@ -21,5 +35,24 @@
     "@digitalbazaar/vc": "^7.2.0",
     "commander": "^12.1.0",
     "jsonld-signatures": "^11.5.0"
+  },
+   "release": {
+    "branches": [
+      "main",
+      "+([0-9])?(.{+([0-9]),x}).x",
+      "next",
+      {
+        "name": "alpha",
+        "prerelease": true
+      },
+      {
+        "name": "beta",
+        "prerelease": true
+      }
+    ],
+    "repositoryUrl": "https://github.com/jeswr/vc-cli.js"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
