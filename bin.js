@@ -102,6 +102,10 @@ program
       const documentContent = await fs.readFile(options.document, 'utf8');
       const document = JSON.parse(documentContent);
 
+      document.issuer = {
+        "id": cid.id
+      };
+
       // Find the verification method in the CID document
       const verificationMethod = cid.verificationMethod.find(vm => vm.id === options.keyId);
       if (!verificationMethod) {
@@ -189,8 +193,11 @@ program
         throw new Error(`Verification method ${document.proof.verificationMethod} not found in CID document`);
       }
 
-      // Create key pair from verification method
-      const keyPair = await Ed25519VerificationKey2020.from(verificationMethod);
+      // Create key pair from verification method with the credential's issuer as controller
+      const keyPair = await Ed25519VerificationKey2020.from({
+        ...verificationMethod,
+        controller: document.issuer.id,
+      });
 
       // Create signature suite
       const suite = new Ed25519Signature2020({
@@ -202,7 +209,8 @@ program
       const result = await vc.verifyCredential({
         credential: document,
         suite,
-        documentLoader
+        documentLoader,
+        
       });
 
       if (result.verified) {

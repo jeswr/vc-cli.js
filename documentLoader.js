@@ -6,11 +6,13 @@ import path from 'path';
 // Create cache directory if it doesn't exist
 const CACHE_DIR = '.cache';
 fs.mkdir(CACHE_DIR, { recursive: true }).catch(console.error);
+
 // Helper function to get cache file path for a URL
 const getCachePath = (url) => {
   const hash = createHash('sha256').update(url).digest('hex');
   return path.join(CACHE_DIR, `${hash}.json`);
 };
+
 // Create a custom document loader
 export const documentLoader = async (url) => {
   const cachePath = getCachePath(url);
