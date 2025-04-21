@@ -88,9 +88,9 @@ export async function generateCID(controller, options = {}) {
   return { cid, privateKeys };
 }
 
-const { cid, privateKeys } = await generateCID('https://example.org/jesse', {
-  includeEd25519: true,
-  includeBBS: true
-});
-console.log('CID Document:', JSON.stringify(cid, null, 2));
-console.log('Private Keys:', privateKeys);
+// const { cid, privateKeys } = await generateCID('https://example.org/jesse', {
+//   includeEd25519: true,
+//   includeBBS: true
+// });
+// console.log('CID Document:', JSON.stringify(cid, null, 2));
+// console.log('Private Keys:', privateKeys);
