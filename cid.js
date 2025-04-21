@@ -37,6 +37,7 @@ export async function generateCID(controller, options = {}) {
       controller: controller
     });
     const verificationMethod = {
+      '@context': 'https://w3id.org/security/multikey/v1',
       id: `${controller}#key-${i}`,
       type: 'Multikey',
       controller: controller,
@@ -60,6 +61,7 @@ export async function generateCID(controller, options = {}) {
       algorithm: Bls12381Multikey.ALGORITHMS.BBS_BLS12381_SHA256
     });
     const verificationMethod = {
+      '@context': 'https://w3id.org/security/multikey/v1',
       id: `${controller}#key-${i}`,
       type: 'Multikey',
       controller: controller,

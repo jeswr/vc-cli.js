@@ -6,4 +6,4 @@ node ./bin.js sign-credential --cid ./alice.jsonld -k ./privatekeys.jsonld -d ./
 node ./bin.js derive-proof -d ./bbs-signed-residence.jsonld -r '/credentialSubject/givenName,/credentialSubject/familyName,/credentialSubject/birthCountry' -o ./derived-residence.jsonld
 
 node bin.js verify-credential -c ./alice.jsonld -d ./signed-residence.jsonld
-# node bin.js verify-credential -c ./alice.jsonld -d ./derived-residence.jsonld
+node bin.js verify-credential -c ./alice.jsonld -d ./derived-residence.jsonld

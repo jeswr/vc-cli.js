@@ -17,6 +17,20 @@ const {
 } = bbs2023Cryptosuite;
 const { purposes: { AssertionProofPurpose } } = jsigs;
 
+// TODO: This is a hack to get the verification method from the CID document
+// I think this is actually an upstream bug that should be reported
+class MyDataIntegrityProof extends DataIntegrityProof {
+  async getVerificationMethod({ proof, documentLoader }) {
+    let verificationMethod = await super.getVerificationMethod({ proof, documentLoader });
+
+    if (typeof verificationMethod === 'object' && verificationMethod.type !== 'Multikey' && 'verificationMethod' in verificationMethod && verificationMethod.verificationMethod.some(vm => vm.id === proof.verificationMethod)) {
+      verificationMethod = verificationMethod.verificationMethod.find(vm => vm.id === proof.verificationMethod);
+    }
+
+    return verificationMethod;
+  }
+}
+
 // Helper function to sanitize URL by removing fragment
 const sanitizeUrl = (url) => {
   try {
@@ -157,13 +171,12 @@ program
         const keyPair = await Bls12381Multikey.from({
           ...verificationMethod,
           secretKeyMultibase: privateKey,
-          '@context': 'https://w3id.org/security/multikey/v1'
         }, { algorithm });
 
         const date = '2023-03-01T21:29:24Z';
         const suite = new DataIntegrityProof({
-          signer: keyPair.signer(), 
-          date, 
+          signer: keyPair.signer(),
+          date,
           cryptosuite: createSignCryptosuite({
             mandatoryPointers: ['/issuer']
           })
@@ -253,21 +266,22 @@ program
         // BBS+ signature
         keyPair = await Bls12381Multikey.from({
           ...verificationMethod,
-          controller: document.issuer.id,
-          '@context': 'https://w3id.org/security/multikey/v1'
+          controller: document.issuer.id
         });
         const cryptosuite = await createVerifyCryptosuite({
           mandatoryPointers: ['/issuer']
         });
-        const suite = new DataIntegrityProof({
+        suite = new MyDataIntegrityProof({
           verifier: keyPair.verifier(),
-          cryptosuite
+          cryptosuite,
         });
 
         // Verify the credential
         const result = await jsigs.verify(document, {
           suite,
-          purpose: new AssertionProofPurpose(),
+          purpose: new AssertionProofPurpose({
+            controller: cid
+          }),
           documentLoader
         });
 
@@ -288,22 +302,24 @@ program
           key: keyPair,
           verificationMethod: verificationMethod.id
         });
+
+
+        // Verify the credential
+        const result = await vc.verifyCredential({
+          credential: document,
+          suite,
+          documentLoader,
+        });
+
+        if (result.verified) {
+          console.log('Credential verified successfully!');
+        } else {
+          console.error('Credential verification failed:');
+          console.error(result.error);
+          process.exit(1);
+        }
       }
 
-      // Verify the credential
-      const result = await vc.verifyCredential({
-        credential: document,
-        suite,
-        documentLoader,
-      });
-
-      if (result.verified) {
-        console.log('Credential verified successfully!');
-      } else {
-        console.error('Credential verification failed:');
-        console.error(result.error);
-        process.exit(1);
-      }
     } catch (error) {
       console.error('Error:', error.message);
       process.exit(1);
