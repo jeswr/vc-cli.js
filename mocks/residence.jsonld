@@ -14,6 +14,7 @@
       "PermanentResident",
       "Person"
     ],
+    "id": "did:key:123456778rdf43ewer46d",
     "givenName": "JANE",
     "familyName": "SMITH",
     "gender": "Female",
