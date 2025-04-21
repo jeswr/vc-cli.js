@@ -81,6 +81,29 @@ vc-cli verify-credential -c <cid-path> -d <document-path>
 vc-cli verify-credential -c cid.json -d signed-credential.json
 ```
 
+### Derive Credential
+
+Create a derived BBS proof from a signed credential, revealing only specific fields while maintaining the cryptographic integrity of the original credential.
+
+```bash
+vc-cli derive-proof -d <document-path> -r <pointers> -o <output-path>
+```
+
+#### Options:
+
+- `-d, --document <path>`: Path to signed BBS document (required)
+- `-r, --reveal <pointers>`: Comma-separated list of JSON pointers to reveal (required)
+- `-o, --output <path>`: Output path for derived document (required)
+
+#### Example:
+
+```bash
+# Derive a credential revealing only specific fields
+vc-cli derive-proof -d signed-credential.json -r '/credentialSubject/givenName,/credentialSubject/familyName' -o derived-credential.json
+```
+
+The derived credential can be verified using the same verification process as the original credential.
+
 ## Error Handling
 
 The CLI tool provides clear error messages when:
