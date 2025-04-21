@@ -55,7 +55,7 @@ program
           const dir = path.dirname(outputPath);
           await fs.mkdir(dir, { recursive: true });
         }
-        
+
         await fs.writeFile(outputPath, JSON.stringify(cid, null, 2));
         console.log(`CID document saved to: ${outputPath}`);
       } else {
@@ -129,7 +129,7 @@ program
       // Import necessary modules
       const { Ed25519VerificationKey2020 } = await import('@digitalbazaar/ed25519-verification-key-2020');
       const { Ed25519Signature2020 } = await import('@digitalbazaar/ed25519-signature-2020');
-      
+
       const vc = await import('@digitalbazaar/vc');
       const { documentLoader } = await import('./documentLoader.js');
 
@@ -140,22 +140,21 @@ program
       // Determine which signature suite to use based on the key type
       if (verificationMethod.publicKeyMultibase.startsWith('zUC7')) {
         const algorithm = Bls12381Multikey.ALGORITHMS.BBS_BLS12381_SHA256;
-const keyPair = await Bls12381Multikey.from({
-  // ...bls12381MultikeyKeyPair
-  ...verificationMethod,
-  secretKeyMultibase: privateKey
-}, { algorithm });
+        const keyPair = await Bls12381Multikey.from({
+          ...verificationMethod,
+          secretKeyMultibase: privateKey
+        }, { algorithm });
 
-const date = '2023-03-01T21:29:24Z';
-const suite = new DataIntegrityProof({
-  signer: keyPair.signer(), date, cryptosuite: createSignCryptosuite()
-});
+        const date = '2023-03-01T21:29:24Z';
+        const suite = new DataIntegrityProof({
+          signer: keyPair.signer(), date, cryptosuite: createSignCryptosuite()
+        });
 
- signedVC = await jsigs.sign(document, {
-  suite,
-  purpose: new AssertionProofPurpose(),
-  documentLoader
-});
+        signedVC = await jsigs.sign(document, {
+          suite,
+          purpose: new AssertionProofPurpose(),
+          documentLoader
+        });
       } else {
         // Ed25519 signature
         keyPair = await Ed25519VerificationKey2020.from({
@@ -167,12 +166,12 @@ const suite = new DataIntegrityProof({
           verificationMethod: verificationMethod.id
         });
 
-      // Sign the credential
-       signedVC = await vc.issue({
-        credential: document,
-        suite,
-        documentLoader
-      });
+        // Sign the credential
+        signedVC = await vc.issue({
+          credential: document,
+          suite,
+          documentLoader
+        });
 
       }
 
@@ -259,7 +258,7 @@ program
         credential: document,
         suite,
         documentLoader,
-        
+
       });
 
       if (result.verified) {
