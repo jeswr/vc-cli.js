@@ -5,6 +5,14 @@ import { generateCID } from './cid.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import * as Bls12381Multikey from '@digitalbazaar/bls12-381-multikey';
+import * as bbs2023Cryptosuite from '@digitalbazaar/bbs-2023-cryptosuite';
+import { DataIntegrityProof } from '@digitalbazaar/data-integrity';
+import jsigs from 'jsonld-signatures';
+const {
+  createSignCryptosuite
+} = bbs2023Cryptosuite;
+const { purposes: { AssertionProofPurpose } } = jsigs;
 
 // Get the directory path of the current file
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -121,27 +129,52 @@ program
       // Import necessary modules
       const { Ed25519VerificationKey2020 } = await import('@digitalbazaar/ed25519-verification-key-2020');
       const { Ed25519Signature2020 } = await import('@digitalbazaar/ed25519-signature-2020');
+      
       const vc = await import('@digitalbazaar/vc');
       const { documentLoader } = await import('./documentLoader.js');
 
-      // Create key pair from verification method and private key
-      const keyPair = await Ed25519VerificationKey2020.from({
-        ...verificationMethod,
-        privateKeyMultibase: privateKey
-      });
+      let suite;
+      let keyPair;
+      let signedVC;
 
-      // Create signature suite
-      const suite = new Ed25519Signature2020({
-        key: keyPair,
-        verificationMethod: verificationMethod.id
-      });
+      // Determine which signature suite to use based on the key type
+      if (verificationMethod.publicKeyMultibase.startsWith('zUC7')) {
+        const algorithm = Bls12381Multikey.ALGORITHMS.BBS_BLS12381_SHA256;
+const keyPair = await Bls12381Multikey.from({
+  // ...bls12381MultikeyKeyPair
+  ...verificationMethod,
+  secretKeyMultibase: privateKey
+}, { algorithm });
+
+const date = '2023-03-01T21:29:24Z';
+const suite = new DataIntegrityProof({
+  signer: keyPair.signer(), date, cryptosuite: createSignCryptosuite()
+});
+
+ signedVC = await jsigs.sign(document, {
+  suite,
+  purpose: new AssertionProofPurpose(),
+  documentLoader
+});
+      } else {
+        // Ed25519 signature
+        keyPair = await Ed25519VerificationKey2020.from({
+          ...verificationMethod,
+          privateKeyMultibase: privateKey
+        });
+        suite = new Ed25519Signature2020({
+          key: keyPair,
+          verificationMethod: verificationMethod.id
+        });
 
       // Sign the credential
-      const signedVC = await vc.issue({
+       signedVC = await vc.issue({
         credential: document,
         suite,
         documentLoader
       });
+
+      }
 
       // Write the signed credential to the output file
       await fs.writeFile(options.output, JSON.stringify(signedVC, null, 2));
@@ -170,6 +203,8 @@ program
       // Import necessary modules
       const { Ed25519VerificationKey2020 } = await import('@digitalbazaar/ed25519-verification-key-2020');
       const { Ed25519Signature2020 } = await import('@digitalbazaar/ed25519-signature-2020');
+      const { BbsBls12381Sha256Signature2023 } = await import('@digitalbazaar/bbs-2023-cryptosuite');
+      const { Bls12381Multikey } = await import('@digitalbazaar/bls12-381-multikey');
       const vc = await import('@digitalbazaar/vc');
       const { documentLoader: defaultDocumentLoader } = await import('./documentLoader.js');
 
@@ -193,17 +228,31 @@ program
         throw new Error(`Verification method ${document.proof.verificationMethod} not found in CID document`);
       }
 
-      // Create key pair from verification method with the credential's issuer as controller
-      const keyPair = await Ed25519VerificationKey2020.from({
-        ...verificationMethod,
-        controller: document.issuer.id,
-      });
+      let suite;
+      let keyPair;
 
-      // Create signature suite
-      const suite = new Ed25519Signature2020({
-        key: keyPair,
-        verificationMethod: verificationMethod.id
-      });
+      // Determine which signature suite to use based on the key type
+      if (verificationMethod.publicKeyMultibase.startsWith('zUC7')) {
+        // BBS+ signature
+        keyPair = await Bls12381Multikey.from({
+          ...verificationMethod,
+          controller: document.issuer.id
+        });
+        suite = new BbsBls12381Sha256Signature2023({
+          key: keyPair,
+          verificationMethod: verificationMethod.id
+        });
+      } else {
+        // Ed25519 signature
+        keyPair = await Ed25519VerificationKey2020.from({
+          ...verificationMethod,
+          controller: document.issuer.id
+        });
+        suite = new Ed25519Signature2020({
+          key: keyPair,
+          verificationMethod: verificationMethod.id
+        });
+      }
 
       // Verify the credential
       const result = await vc.verifyCredential({
