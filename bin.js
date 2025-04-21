@@ -4,9 +4,6 @@ import { program } from 'commander';
 import { generateCID } from './cid.js';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
 
 program
   .name('vc-cli')
