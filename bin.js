@@ -4,11 +4,18 @@ import { program } from 'commander';
 import { generateCID } from './cid.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory path of the current file
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Read package.json to get version
+const packageJson = JSON.parse(await fs.readFile(path.join(__dirname, 'package.json'), 'utf8'));
 
 program
   .name('vc-cli')
   .description('CLI utility for generating CIDs and issuing verifiable credentials')
-  .version('1.0.0');
+  .version(packageJson.version);
 
 program
   .command('generate-cid')
