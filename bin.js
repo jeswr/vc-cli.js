@@ -12,8 +12,8 @@ import jsigs from 'jsonld-signatures';
 import { URL } from 'url';
 const {
   createSignCryptosuite,
-  createVerifyCryptosuite
-
+  createVerifyCryptosuite,
+  createDiscloseCryptosuite
 } = bbs2023Cryptosuite;
 const { purposes: { AssertionProofPurpose } } = jsigs;
 
@@ -156,12 +156,17 @@ program
         const algorithm = Bls12381Multikey.ALGORITHMS.BBS_BLS12381_SHA256;
         const keyPair = await Bls12381Multikey.from({
           ...verificationMethod,
-          secretKeyMultibase: privateKey
+          secretKeyMultibase: privateKey,
+          '@context': 'https://w3id.org/security/multikey/v1'
         }, { algorithm });
 
         const date = '2023-03-01T21:29:24Z';
         const suite = new DataIntegrityProof({
-          signer: keyPair.signer(), date, cryptosuite: createSignCryptosuite()
+          signer: keyPair.signer(), 
+          date, 
+          cryptosuite: createSignCryptosuite({
+            mandatoryPointers: ['/issuer']
+          })
         });
 
         signedVC = await jsigs.sign(document, {
@@ -248,9 +253,12 @@ program
         // BBS+ signature
         keyPair = await Bls12381Multikey.from({
           ...verificationMethod,
-          controller: document.issuer.id
+          controller: document.issuer.id,
+          '@context': 'https://w3id.org/security/multikey/v1'
         });
-        const cryptosuite = await createVerifyCryptosuite();
+        const cryptosuite = await createVerifyCryptosuite({
+          mandatoryPointers: ['/issuer']
+        });
         const suite = new DataIntegrityProof({
           verifier: keyPair.verifier(),
           cryptosuite
@@ -296,6 +304,48 @@ program
         console.error(result.error);
         process.exit(1);
       }
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('derive-proof')
+  .description('Create a derived BBS proof from a signed input BBS document')
+  .requiredOption('-d, --document <path>', 'Path to signed BBS document')
+  .requiredOption('-r, --reveal <pointers>', 'Comma-separated list of JSON pointers to reveal (e.g. /credentialSubject/name,/credentialSubject/age)')
+  .requiredOption('-o, --output <path>', 'Output path for derived document')
+  .action(async (options) => {
+    try {
+      // Read the signed document
+      const documentContent = await fs.readFile(options.document, 'utf8');
+      const document = JSON.parse(documentContent);
+
+      // Parse the reveal pointers
+      const revealPointers = options.reveal.split(',').map(pointer => pointer.trim());
+
+      // Import necessary modules
+      const { documentLoader } = await import('./documentLoader.js');
+
+      // Create the disclose cryptosuite with the reveal pointers
+      const cryptosuite = createDiscloseCryptosuite({
+        selectivePointers: revealPointers
+      });
+
+      // Create the proof suite
+      const suite = new DataIntegrityProof({ cryptosuite });
+
+      // Derive the proof
+      const derivedDocument = await jsigs.derive(document, {
+        suite,
+        purpose: new AssertionProofPurpose(),
+        documentLoader
+      });
+
+      // Write the derived document to the output file
+      await fs.writeFile(options.output, JSON.stringify(derivedDocument, null, 2));
+      console.log(`Derived document saved to: ${options.output}`);
     } catch (error) {
       console.error('Error:', error.message);
       process.exit(1);
