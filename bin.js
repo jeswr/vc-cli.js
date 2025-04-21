@@ -10,7 +10,9 @@ import * as bbs2023Cryptosuite from '@digitalbazaar/bbs-2023-cryptosuite';
 import { DataIntegrityProof } from '@digitalbazaar/data-integrity';
 import jsigs from 'jsonld-signatures';
 const {
-  createSignCryptosuite
+  createSignCryptosuite,
+  createVerifyCryptosuite
+
 } = bbs2023Cryptosuite;
 const { purposes: { AssertionProofPurpose } } = jsigs;
 
@@ -202,8 +204,6 @@ program
       // Import necessary modules
       const { Ed25519VerificationKey2020 } = await import('@digitalbazaar/ed25519-verification-key-2020');
       const { Ed25519Signature2020 } = await import('@digitalbazaar/ed25519-signature-2020');
-      const { BbsBls12381Sha256Signature2023 } = await import('@digitalbazaar/bbs-2023-cryptosuite');
-      const { Bls12381Multikey } = await import('@digitalbazaar/bls12-381-multikey');
       const vc = await import('@digitalbazaar/vc');
       const { documentLoader: defaultDocumentLoader } = await import('./documentLoader.js');
 
@@ -237,10 +237,19 @@ program
           ...verificationMethod,
           controller: document.issuer.id
         });
-        suite = new BbsBls12381Sha256Signature2023({
-          key: keyPair,
-          verificationMethod: verificationMethod.id
+        const cryptosuite = await createVerifyCryptosuite();
+        console.log('cryptosuite', document.proof);
+        const verifier = await cryptosuite.createVerifyData({
+          document,
+          proof: document.proof,
+          documentLoader,
+          cryptosuite
+          // verificationMethod: {...keyPair},
+          // dp
         });
+        console.log('verifier', verifier, document);
+        // const result = await verifier.verify({data: document});
+        console.log('result', result);
       } else {
         // Ed25519 signature
         keyPair = await Ed25519VerificationKey2020.from({
@@ -258,7 +267,6 @@ program
         credential: document,
         suite,
         documentLoader,
-
       });
 
       if (result.verified) {
