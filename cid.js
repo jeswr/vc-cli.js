@@ -65,7 +65,7 @@ export async function generateCID(controller, options = {}) {
     });
     const verificationMethod = {
       id: `${controller}#key-${i}`,
-      type: 'Bls12381G2Key2020',
+      type: 'Multikey',
       controller: controller,
       publicKeyMultibase: bbsKeyPair.publicKeyMultibase
     };
@@ -76,8 +76,13 @@ export async function generateCID(controller, options = {}) {
     cid.capabilityInvocation.push(verificationMethod.id);
     cid.capabilityDelegation.push(verificationMethod.id);
 
-    console.log(bbsKeyPair);
     privateKeys[verificationMethod.id] = bbsKeyPair.secretKeyMultibase;
+
+    // Note this is how to reconstruct the key pair from the verification method
+    // let kp = await Bls12381Multikey.from({
+    //   ...verificationMethod,
+    //   secretKeyMultibase: bbsKeyPair.secretKeyMultibase
+    // });
   }
 
   return { cid, privateKeys };
