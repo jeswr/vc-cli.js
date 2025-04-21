@@ -8,6 +8,10 @@ A command-line utility for generating CIDs (Cryptographic Identifier Documents) 
 npm install -g @jeswr/vc-cli
 ```
 
+## ⚠️ Warning
+
+This library is currently in development and is **not intended for production use**. It is provided for testing and educational purposes only. Use at your own risk.
+
 ## Commands
 
 ### Generate CID
