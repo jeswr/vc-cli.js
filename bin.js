@@ -80,4 +80,72 @@ program
     }
   });
 
+program
+  .command('sign-credential')
+  .description('Sign a verifiable credential using a CID document and private keys')
+  .requiredOption('-c, --cid <path>', 'Path to CID document')
+  .requiredOption('-k, --keys <path>', 'Path to private keys JSON file')
+  .requiredOption('-d, --document <path>', 'Path to JSON-LD document to sign')
+  .requiredOption('-i, --key-id <id>', 'ID of the key to use for signing')
+  .requiredOption('-o, --output <path>', 'Output path for signed credential')
+  .action(async (options) => {
+    try {
+      // Read the CID document
+      const cidContent = await fs.readFile(options.cid, 'utf8');
+      const cid = JSON.parse(cidContent);
+
+      // Read the private keys
+      const keysContent = await fs.readFile(options.keys, 'utf8');
+      const privateKeys = JSON.parse(keysContent);
+
+      // Read the document to sign
+      const documentContent = await fs.readFile(options.document, 'utf8');
+      const document = JSON.parse(documentContent);
+
+      // Find the verification method in the CID document
+      const verificationMethod = cid.verificationMethod.find(vm => vm.id === options.keyId);
+      if (!verificationMethod) {
+        throw new Error(`Key ID ${options.keyId} not found in CID document`);
+      }
+
+      // Get the private key
+      const privateKey = privateKeys[options.keyId];
+      if (!privateKey) {
+        throw new Error(`Private key for ${options.keyId} not found`);
+      }
+
+      // Import necessary modules
+      const { Ed25519VerificationKey2020 } = await import('@digitalbazaar/ed25519-verification-key-2020');
+      const { Ed25519Signature2020 } = await import('@digitalbazaar/ed25519-signature-2020');
+      const vc = await import('@digitalbazaar/vc');
+      const { documentLoader } = await import('./documentLoader.js');
+
+      // Create key pair from verification method and private key
+      const keyPair = await Ed25519VerificationKey2020.from({
+        ...verificationMethod,
+        privateKeyMultibase: privateKey
+      });
+
+      // Create signature suite
+      const suite = new Ed25519Signature2020({
+        key: keyPair,
+        verificationMethod: verificationMethod.id
+      });
+
+      // Sign the credential
+      const signedVC = await vc.issue({
+        credential: document,
+        suite,
+        documentLoader
+      });
+
+      // Write the signed credential to the output file
+      await fs.writeFile(options.output, JSON.stringify(signedVC, null, 2));
+      console.log(`Signed credential saved to: ${options.output}`);
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
 program.parse(); 
