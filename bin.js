@@ -9,12 +9,24 @@ import * as Bls12381Multikey from '@digitalbazaar/bls12-381-multikey';
 import * as bbs2023Cryptosuite from '@digitalbazaar/bbs-2023-cryptosuite';
 import { DataIntegrityProof } from '@digitalbazaar/data-integrity';
 import jsigs from 'jsonld-signatures';
+import { URL } from 'url';
 const {
   createSignCryptosuite,
   createVerifyCryptosuite
 
 } = bbs2023Cryptosuite;
 const { purposes: { AssertionProofPurpose } } = jsigs;
+
+// Helper function to sanitize URL by removing fragment
+const sanitizeUrl = (url) => {
+  try {
+    const parsedUrl = new URL(url);
+    parsedUrl.hash = '';
+    return parsedUrl.toString();
+  } catch (e) {
+    return url;
+  }
+};
 
 // Get the directory path of the current file
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -209,6 +221,7 @@ program
 
       // Create a custom document loader that includes the CID document
       const documentLoader = async (url) => {
+        url = sanitizeUrl(url);
         // If the URL matches the CID document's ID, return the CID document
         if (url === cid.id) {
           return {
@@ -238,18 +251,25 @@ program
           controller: document.issuer.id
         });
         const cryptosuite = await createVerifyCryptosuite();
-        console.log('cryptosuite', document.proof);
-        const verifier = await cryptosuite.createVerifyData({
-          document,
-          proof: document.proof,
-          documentLoader,
+        const suite = new DataIntegrityProof({
+          verifier: keyPair.verifier(),
           cryptosuite
-          // verificationMethod: {...keyPair},
-          // dp
         });
-        console.log('verifier', verifier, document);
-        // const result = await verifier.verify({data: document});
-        console.log('result', result);
+
+        // Verify the credential
+        const result = await jsigs.verify(document, {
+          suite,
+          purpose: new AssertionProofPurpose(),
+          documentLoader
+        });
+
+        if (result.verified) {
+          console.log('Credential verified successfully!');
+        } else {
+          console.error('Credential verification failed:');
+          console.error(result.error);
+          process.exit(1);
+        }
       } else {
         // Ed25519 signature
         keyPair = await Ed25519VerificationKey2020.from({
