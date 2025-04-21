@@ -148,4 +148,74 @@ program
     }
   });
 
+program
+  .command('verify-credential')
+  .description('Verify a verifiable credential using a CID document')
+  .requiredOption('-c, --cid <path>', 'Path to CID document')
+  .requiredOption('-d, --document <path>', 'Path to verifiable credential to verify')
+  .action(async (options) => {
+    try {
+      // Read the CID document
+      const cidContent = await fs.readFile(options.cid, 'utf8');
+      const cid = JSON.parse(cidContent);
+
+      // Read the verifiable credential
+      const documentContent = await fs.readFile(options.document, 'utf8');
+      const document = JSON.parse(documentContent);
+
+      // Import necessary modules
+      const { Ed25519VerificationKey2020 } = await import('@digitalbazaar/ed25519-verification-key-2020');
+      const { Ed25519Signature2020 } = await import('@digitalbazaar/ed25519-signature-2020');
+      const vc = await import('@digitalbazaar/vc');
+      const { documentLoader: defaultDocumentLoader } = await import('./documentLoader.js');
+
+      // Create a custom document loader that includes the CID document
+      const documentLoader = async (url) => {
+        // If the URL matches the CID document's ID, return the CID document
+        if (url === cid.id) {
+          return {
+            contextUrl: null,
+            document: cid,
+            documentUrl: url
+          };
+        }
+        // Otherwise use the default document loader
+        return defaultDocumentLoader(url);
+      };
+
+      // Get the verification method from the CID document
+      const verificationMethod = cid.verificationMethod.find(vm => vm.id === document.proof.verificationMethod);
+      if (!verificationMethod) {
+        throw new Error(`Verification method ${document.proof.verificationMethod} not found in CID document`);
+      }
+
+      // Create key pair from verification method
+      const keyPair = await Ed25519VerificationKey2020.from(verificationMethod);
+
+      // Create signature suite
+      const suite = new Ed25519Signature2020({
+        key: keyPair,
+        verificationMethod: verificationMethod.id
+      });
+
+      // Verify the credential
+      const result = await vc.verifyCredential({
+        credential: document,
+        suite,
+        documentLoader
+      });
+
+      if (result.verified) {
+        console.log('Credential verified successfully!');
+      } else {
+        console.error('Credential verification failed:');
+        console.error(result.error);
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
 program.parse(); 

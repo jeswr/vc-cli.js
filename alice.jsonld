@@ -1,0 +1,34 @@
+{
+  "@context": "https://www.w3.org/ns/cid/v1",
+  "id": "http://example.org/alice",
+  "verificationMethod": [
+    {
+      "id": "http://example.org/alice#key-1",
+      "type": "Multikey",
+      "controller": "http://example.org/alice",
+      "publicKeyMultibase": "z6Mkw6t78fY9AKusAdK2RiV118HNeDTgUmT5qyYYSeqA2KUr"
+    },
+    {
+      "id": "http://example.org/alice#key-2",
+      "type": "Multikey",
+      "controller": "http://example.org/alice",
+      "publicKeyMultibase": "zUC77ySwP731mxKYmAxa39Jno7ZvLMBWKcHRG4fuu4r7YJQViNAtPSEaVtvyu5C9TCLxZRQNaHw1D1mKT5nMuSYa9fGTM3vcgh5QDqs2EP5zcbhBLaGsW7nwo4oEo89Yzq51Kzp"
+    }
+  ],
+  "authentication": [
+    "http://example.org/alice#key-1",
+    "http://example.org/alice#key-2"
+  ],
+  "assertionMethod": [
+    "http://example.org/alice#key-1",
+    "http://example.org/alice#key-2"
+  ],
+  "capabilityInvocation": [
+    "http://example.org/alice#key-1",
+    "http://example.org/alice#key-2"
+  ],
+  "capabilityDelegation": [
+    "http://example.org/alice#key-1",
+    "http://example.org/alice#key-2"
+  ]
+}
