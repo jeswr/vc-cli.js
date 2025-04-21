@@ -1,8 +1,5 @@
 import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
-// import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
-// import { BbsBlsSignature2020 } from '@digitalbazaar/bbs-2023-cryptosuite';
 import * as Bls12381Multikey from '@digitalbazaar/bls12-381-multikey';
-import * as bbs2023Cryptosuite from '@digitalbazaar/bbs-2023-cryptosuite';
 
 /**
  * Generates a CID (Controlled Identifier) document according to the W3C specification
@@ -32,7 +29,6 @@ export async function generateCID(controller, options = {}) {
   let i = 0;
 
   const privateKeys = {};
-  
 
   // Generate Ed25519 key pair if requested
   if (includeEd25519) {
