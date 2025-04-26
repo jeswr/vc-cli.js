@@ -397,18 +397,25 @@ program
       const shouldDerive = options.derive !== false;
       const baseOutputDir = options.outputDir || './generated';
 
-      // Create output directories
+      // Define directory paths and files
       const cidsDir = path.join(baseOutputDir, 'cids');
       const bbsDir = path.join(baseOutputDir, 'bbs');
       const ed25519Dir = path.join(baseOutputDir, 'ed25519');
       const derivedDir = path.join(baseOutputDir, 'derived');
+      const keysFile = path.join(baseOutputDir, 'privateKeys.json');
 
-      await Promise.all([
-        fs.mkdir(cidsDir, { recursive: true }),
-        fs.mkdir(bbsDir, { recursive: true }),
-        fs.mkdir(ed25519Dir, { recursive: true }),
-        fs.mkdir(derivedDir, { recursive: true })
-      ]);
+      // Create output directories
+      console.log('Creating output directories...');
+      try {
+        await Promise.all([
+          fs.mkdir(cidsDir, { recursive: true }),
+          fs.mkdir(bbsDir, { recursive: true }),
+          fs.mkdir(ed25519Dir, { recursive: true }),
+          fs.mkdir(derivedDir, { recursive: true })
+        ]);
+      } catch (error) {
+        throw new Error(`Failed to create output directories: ${error.message}`);
+      }
 
       // Initialize combined private keys object
       const allPrivateKeys = {};
@@ -418,70 +425,90 @@ program
       const cidFiles = [];
 
       for (const cid of cids) {
-        const shortName = cid.split(':').pop(); // Extract 'alice' from 'did:example:alice'
-        const cidFile = path.join(cidsDir, `${shortName}-cid.json`);
-        
-        // Generate CID and get private keys
-        const { cid: cidDoc, privateKeys } = await generateCID(cid, {
-          includeEd25519: signatures.includes('ed25519'),
-          includeBBS: signatures.includes('bbs')
-        });
+        try {
+          const shortName = cid.split(':').pop(); // Extract 'alice' from 'did:example:alice'
+          const cidFile = path.join(cidsDir, `${shortName}-cid.json`);
+          
+          // Generate CID and get private keys
+          const { cid: cidDoc, privateKeys } = await generateCID(cid, {
+            includeEd25519: signatures.includes('ed25519'),
+            includeBBS: signatures.includes('bbs')
+          });
 
-        // Save CID document
-        await fs.writeFile(cidFile, JSON.stringify(cidDoc, null, 2));
-        console.log(`CID document saved to: ${cidFile}`);
+          // Save CID document
+          await fs.writeFile(cidFile, JSON.stringify(cidDoc, null, 2));
+          console.log(`CID document saved to: ${cidFile}`);
 
-        // Merge private keys into combined object
-        Object.assign(allPrivateKeys, privateKeys);
-        
-        cidFiles.push(cidFile);
+          // Merge private keys into combined object
+          Object.assign(allPrivateKeys, privateKeys);
+          
+          cidFiles.push(cidFile);
+        } catch (error) {
+          throw new Error(`Failed to generate CID for ${cid}: ${error.message}`);
+        }
       }
 
       // Save all private keys to a single file
-      const keysFile = path.join(baseOutputDir, 'privateKeys.json');
-      await fs.writeFile(keysFile, JSON.stringify(allPrivateKeys, null, 2));
-      console.log(`All private keys saved to: ${keysFile}`);
+      console.log('Saving private keys...');
+      try {
+        await fs.writeFile(keysFile, JSON.stringify(allPrivateKeys, null, 2));
+        console.log(`All private keys saved to: ${keysFile}`);
+      } catch (error) {
+        throw new Error(`Failed to save private keys: ${error.message}`);
+      }
 
       // Sign credentials
       console.log('Signing credentials...');
       const signedFiles = [];
 
       for (const cidFile of cidFiles) {
-        const cidContent = await fs.readFile(cidFile, 'utf8');
-        const cid = JSON.parse(cidContent);
-        const shortName = cid.id.split(':').pop();
+        try {
+          const cidContent = await fs.readFile(cidFile, 'utf8');
+          const cid = JSON.parse(cidContent);
+          const shortName = cid.id.split(':').pop();
 
-        for (const docPath of documents) {
-          const docName = path.basename(docPath, '.jsonld');
-          
-          for (const sigType of signatures) {
-            const keyId = cid.verificationMethod.find(vm => 
-              sigType === 'bbs' ? vm.publicKeyMultibase.startsWith('zUC7') : !vm.publicKeyMultibase.startsWith('zUC7')
-            )?.id;
+          for (const docPath of documents) {
+            try {
+              const docName = path.basename(docPath, '.jsonld');
+              
+              for (const sigType of signatures) {
+                try {
+                  const keyId = cid.verificationMethod.find(vm => 
+                    sigType === 'bbs' ? vm.publicKeyMultibase.startsWith('zUC7') : !vm.publicKeyMultibase.startsWith('zUC7')
+                  )?.id;
 
-            if (!keyId) {
-              console.warn(`No ${sigType} key found for CID ${cid.id}, skipping...`);
-              continue;
+                  if (!keyId) {
+                    console.warn(`No ${sigType} key found for CID ${cid.id}, skipping...`);
+                    continue;
+                  }
+
+                  const outputDir = sigType === 'bbs' ? bbsDir : ed25519Dir;
+                  const outputFile = path.join(outputDir, `${docName}-${shortName}.json`);
+                  
+                  await program.parseAsync([
+                    '', '', 'sign-credential',
+                    '-c', cidFile,
+                    '-k', keysFile,
+                    '-d', docPath,
+                    '-i', keyId,
+                    '-o', outputFile
+                  ]);
+
+                  signedFiles.push({
+                    file: outputFile,
+                    type: sigType,
+                    cid: cid.id
+                  });
+                } catch (error) {
+                  throw new Error(`Failed to sign document ${docPath} with ${sigType} for CID ${cid.id}: ${error.message}`);
+                }
+              }
+            } catch (error) {
+              throw new Error(`Failed to process document ${docPath}: ${error.message}`);
             }
-
-            const outputDir = sigType === 'bbs' ? bbsDir : ed25519Dir;
-            const outputFile = path.join(outputDir, `${docName}-${shortName}.json`);
-            
-            await program.parseAsync([
-              '', '', 'sign-credential',
-              '-c', cidFile,
-              '-k', keysFile,
-              '-d', docPath,
-              '-i', keyId,
-              '-o', outputFile
-            ]);
-
-            signedFiles.push({
-              file: outputFile,
-              type: sigType,
-              cid: cid.id
-            });
           }
+        } catch (error) {
+          throw new Error(`Failed to process CID file ${cidFile}: ${error.message}`);
         }
       }
 
@@ -490,32 +517,40 @@ program
         console.log('Creating derived proofs...');
         const bbsFiles = signedFiles.filter(f => f.type === 'bbs');
 
-        for (const { file, cid } of bbsFiles) {
-          const docName = path.basename(file, '.json');
-          const outputFile = path.join(derivedDir, `${docName}-derived.json`);
-          
-          // Use a reasonable set of reveal pointers based on the credential type
-          const revealPointers = [
-            '/credentialSubject/givenName',
-            '/credentialSubject/familyName',
-            '/credentialSubject/birthCountry'
-          ].join(',');
+        for (const { file } of bbsFiles) {
+          try {
+            const docName = path.basename(file, '.json');
+            const outputFile = path.join(derivedDir, `${docName}-derived.json`);
+            
+            // Use a reasonable set of reveal pointers based on the credential type
+            const revealPointers = [
+              '/credentialSubject/givenName',
+              '/credentialSubject/familyName',
+              '/credentialSubject/birthCountry'
+            ].join(',');
 
-          await program.parseAsync([
-            '', '', 'derive-proof',
-            '-d', file,
-            '-r', revealPointers,
-            '-o', outputFile
-          ]);
+            await program.parseAsync([
+              '', '', 'derive-proof',
+              '-d', file,
+              '-r', revealPointers,
+              '-o', outputFile
+            ]);
+          } catch (error) {
+            throw new Error(`Failed to derive proof for ${file}: ${error.message}`);
+          }
         }
       }
 
       // Verify all generated documents
       console.log('Verifying generated documents...');
       for (const { file, cid } of signedFiles) {
-        const shortName = cid.split(':').pop();
-        const cidFile = path.join(cidsDir, `${shortName}-cid.json`);
-        await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', file]);
+        try {
+          const shortName = cid.split(':').pop();
+          const cidFile = path.join(cidsDir, `${shortName}-cid.json`);
+          await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', file]);
+        } catch (error) {
+          throw new Error(`Failed to verify document ${file}: ${error.message}`);
+        }
       }
 
       console.log('Generation complete! All files are organized in:', baseOutputDir);
