@@ -7,7 +7,8 @@
     "vc-cli": "./bin.js"
   },
   "scripts": {
-    "test": "bash ./test.sh && bash ./clean.sh"
+    "test": "bash ./test.sh && bash ./clean.sh",
+    "validate-jsonld": "node ./validate-jsonld.js"
   },
   "repository": {
     "type": "git",
@@ -34,6 +35,7 @@
     "@digitalbazaar/ed25519-verification-key-2020": "^4.2.0",
     "@digitalbazaar/vc": "^7.2.0",
     "commander": "^12.1.0",
+    "jsonld": "^8.2.1",
     "jsonld-signatures": "^11.5.0"
   },
    "release": {

@@ -1,3 +1,13 @@
+#!/bin/bash
+
+# Validate all JSON-LD files in the mocks directory
+for file in ./mocks/*.jsonld; do
+  echo "Validating $file..."
+  npm run validate-jsonld "$file"
+done
+
+npm run validate-jsonld ./mocks/employable.jsonld
+
 node bin.js generate-cid -c 'http://example.org/alice' -o ./alice.jsonld -k privatekeys.jsonld
 node ./bin.js sign-credential --cid ./alice.jsonld -k ./privatekeys.jsonld -d ./mocks/residence.jsonld -o ./signed-residence.jsonld -i 'http://example.org/alice#key-1'
 node ./bin.js sign-credential --cid ./alice.jsonld -k ./privatekeys.jsonld -d ./mocks/residence.jsonld -o ./bbs-signed-residence.jsonld -i 'http://example.org/alice#key-2'
