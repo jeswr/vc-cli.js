@@ -104,6 +104,42 @@ vc-cli derive-proof -d signed-credential.json -r '/credentialSubject/givenName,/
 
 The derived credential can be verified using the same verification process as the original credential.
 
+### Generate
+
+Generate CIDs, sign credentials, and create derived proofs in a batch process.
+
+```bash
+vc-cli generate [options]
+```
+
+#### Options:
+
+- `-c, --cids <ids>`: Comma-separated list of CID controller DIDs [default: "did:example:alice,did:example:bob,did:example:charlie,did:example:dave"]
+- `-d, --documents <paths>`: Comma-separated list of credential document paths to sign [default: all mock credentials]
+- `-s, --signatures <types>`: Comma-separated list of signature types to use (bbs,ed25519) [default: "bbs,ed25519"]
+- `--no-derive`: Skip creating derived proofs for BBS signatures
+- `-o, --output-dir <path>`: Output directory for generated files [default: "./generated"]
+
+#### Example:
+
+```bash
+# Generate with default options
+vc-cli generate
+
+# Generate with custom CIDs and documents
+vc-cli generate -c "did:example:alice,did:example:bob" -d "./mocks/residence.jsonld,./mocks/education.jsonld"
+
+# Generate with only BBS signatures and no derived proofs
+vc-cli generate -s bbs --no-derive
+```
+
+The generate command will:
+1. Create CIDs for each specified controller DID
+2. Sign each document with each CID using the specified signature types
+3. Create derived proofs for BBS signatures (unless disabled)
+4. Save all generated files in the specified output directory
+5. Verify all generated documents
+
 ## Error Handling
 
 The CLI tool provides clear error messages when:
