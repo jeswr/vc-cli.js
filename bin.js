@@ -180,11 +180,15 @@ program
           })
         });
 
-        signedVC = await jsigs.sign(document, {
-          suite,
-          purpose: new AssertionProofPurpose(),
-          documentLoader: defaultDocumentLoader
-        });
+        try {
+          signedVC = await jsigs.sign(document, {
+            suite,
+            purpose: new AssertionProofPurpose(),
+            documentLoader: defaultDocumentLoader
+          });
+        } catch (error) {
+          throw new Error(`Failed to sign document using BBS Signature: ${error.message}`);
+        }
       } else {
         // Ed25519 signature
         keyPair = await Ed25519VerificationKey2020.from({
@@ -195,13 +199,16 @@ program
           key: keyPair,
           verificationMethod: verificationMethod.id
         });
-
+try {
         // Sign the credential
         signedVC = await vc.issue({
           credential: document,
           suite,
           documentLoader: defaultDocumentLoader
         });
+      } catch (error) {
+        throw new Error(`Failed to sign document using Ed25519 Signature: ${error.message}`);
+      }
       }
 
       // Write the signed credential to the output file
