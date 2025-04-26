@@ -1,0 +1,36 @@
+{
+  "@context": "https://www.w3.org/ns/cid/v1",
+  "id": "did:example:bob",
+  "verificationMethod": [
+    {
+      "@context": "https://w3id.org/security/multikey/v1",
+      "id": "did:example:bob#key-1",
+      "type": "Multikey",
+      "controller": "did:example:bob",
+      "publicKeyMultibase": "z6Mkubny6oCnSXUPKWrJxdBbkkCdXr3bqzodiVYPDsSDaYYt"
+    },
+    {
+      "@context": "https://w3id.org/security/multikey/v1",
+      "id": "did:example:bob#key-2",
+      "type": "Multikey",
+      "controller": "did:example:bob",
+      "publicKeyMultibase": "zUC77BYne7ZMLQtu7p3inHhoCMD5vifR1JVa3DVHr9DiHwZNNWpPVHnximZRaahEZVfbKbo9Cgpnr6TKyx4YMnnqUCBzayuDaGfeRkbTePMwxVvUgXErwiL9PXZ7uCgj7qRpbyY"
+    }
+  ],
+  "authentication": [
+    "did:example:bob#key-1",
+    "did:example:bob#key-2"
+  ],
+  "assertionMethod": [
+    "did:example:bob#key-1",
+    "did:example:bob#key-2"
+  ],
+  "capabilityInvocation": [
+    "did:example:bob#key-1",
+    "did:example:bob#key-2"
+  ],
+  "capabilityDelegation": [
+    "did:example:bob#key-1",
+    "did:example:bob#key-2"
+  ]
+}

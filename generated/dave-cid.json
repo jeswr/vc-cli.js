@@ -1,0 +1,36 @@
+{
+  "@context": "https://www.w3.org/ns/cid/v1",
+  "id": "did:example:dave",
+  "verificationMethod": [
+    {
+      "@context": "https://w3id.org/security/multikey/v1",
+      "id": "did:example:dave#key-1",
+      "type": "Multikey",
+      "controller": "did:example:dave",
+      "publicKeyMultibase": "z6MkqpKRJLa2mhMpRiPy9ZKV6iJAkvVK1PjdapuQAq6PLWsa"
+    },
+    {
+      "@context": "https://w3id.org/security/multikey/v1",
+      "id": "did:example:dave#key-2",
+      "type": "Multikey",
+      "controller": "did:example:dave",
+      "publicKeyMultibase": "zUC7HgSn7KWKUmqCwFzoVLWCEa1dBcgj43ezC7VqYvKjeU3pjinJM3GDwnEhQPkvgjhb7JJZeTtedqEQLEHoDmitj9f5aSFKzkm5ed5LobEJfMKRpvM1j2TVBY53so3fH7sKYBm"
+    }
+  ],
+  "authentication": [
+    "did:example:dave#key-1",
+    "did:example:dave#key-2"
+  ],
+  "assertionMethod": [
+    "did:example:dave#key-1",
+    "did:example:dave#key-2"
+  ],
+  "capabilityInvocation": [
+    "did:example:dave#key-1",
+    "did:example:dave#key-2"
+  ],
+  "capabilityDelegation": [
+    "did:example:dave#key-1",
+    "did:example:dave#key-2"
+  ]
+}

@@ -368,4 +368,150 @@ program
     }
   });
 
+program
+  .command('generate')
+  .description('Generate CIDs, sign credentials, and create derived proofs')
+  .option('-c, --cids <ids>', 'Comma-separated list of CID controller DIDs [default: "did:example:alice,did:example:bob,did:example:charlie,did:example:dave"]')
+  .option('-d, --documents <paths>', 'Comma-separated list of credential document paths to sign [default: all mock credentials]')
+  .option('-s, --signatures <types>', 'Comma-separated list of signature types to use (bbs,ed25519) [default: "bbs,ed25519"]')
+  .option('--no-derive', 'Skip creating derived proofs for BBS signatures')
+  .option('-o, --output-dir <path>', 'Output directory for generated files [default: "./generated"]')
+  .action(async (options) => {
+    try {
+      // Parse options with defaults
+      const cids = options.cids ? options.cids.split(',') : [
+        'did:example:alice',
+        'did:example:bob',
+        'did:example:charlie',
+        'did:example:dave'
+      ];
+      
+      const documents = options.documents ? options.documents.split(',') : [
+        './mocks/residence.jsonld',
+        './mocks/barcode.jsonld',
+        './mocks/employable.jsonld',
+        './mocks/education.jsonld'
+      ];
+      
+      const signatures = options.signatures ? options.signatures.split(',') : ['bbs', 'ed25519'];
+      const shouldDerive = options.derive !== false;
+      const outputDir = options.outputDir || './generated';
+
+      // Create output directory
+      await fs.mkdir(outputDir, { recursive: true });
+
+      // Initialize combined private keys object
+      const allPrivateKeys = {};
+
+      // Generate CIDs
+      console.log('Generating CIDs...');
+      const cidFiles = [];
+
+      for (const cid of cids) {
+        const shortName = cid.split(':').pop(); // Extract 'alice' from 'did:example:alice'
+        const cidFile = path.join(outputDir, `${shortName}-cid.json`);
+        
+        // Generate CID and get private keys
+        const { cid: cidDoc, privateKeys } = await generateCID(cid, {
+          includeEd25519: signatures.includes('ed25519'),
+          includeBBS: signatures.includes('bbs')
+        });
+
+        // Save CID document
+        await fs.writeFile(cidFile, JSON.stringify(cidDoc, null, 2));
+        console.log(`CID document saved to: ${cidFile}`);
+
+        // Merge private keys into combined object
+        Object.assign(allPrivateKeys, privateKeys);
+        
+        cidFiles.push(cidFile);
+      }
+
+      // Save all private keys to a single file
+      const keysFile = path.join(outputDir, 'privateKeys.json');
+      await fs.writeFile(keysFile, JSON.stringify(allPrivateKeys, null, 2));
+      console.log(`All private keys saved to: ${keysFile}`);
+
+      // Sign credentials
+      console.log('Signing credentials...');
+      const signedFiles = [];
+
+      for (const cidFile of cidFiles) {
+        const cidContent = await fs.readFile(cidFile, 'utf8');
+        const cid = JSON.parse(cidContent);
+        const shortName = cid.id.split(':').pop();
+
+        for (const docPath of documents) {
+          const docName = path.basename(docPath, '.jsonld');
+          
+          for (const sigType of signatures) {
+            const keyId = cid.verificationMethod.find(vm => 
+              sigType === 'bbs' ? vm.publicKeyMultibase.startsWith('zUC7') : !vm.publicKeyMultibase.startsWith('zUC7')
+            )?.id;
+
+            if (!keyId) {
+              console.warn(`No ${sigType} key found for CID ${cid.id}, skipping...`);
+              continue;
+            }
+
+            const outputFile = path.join(outputDir, `${docName}-${sigType}-${shortName}.json`);
+            
+            await program.parseAsync([
+              '', '', 'sign-credential',
+              '-c', cidFile,
+              '-k', keysFile,
+              '-d', docPath,
+              '-i', keyId,
+              '-o', outputFile
+            ]);
+
+            signedFiles.push({
+              file: outputFile,
+              type: sigType,
+              cid: cid.id
+            });
+          }
+        }
+      }
+
+      // Create derived proofs for BBS signatures
+      if (shouldDerive) {
+        console.log('Creating derived proofs...');
+        const bbsFiles = signedFiles.filter(f => f.type === 'bbs');
+
+        for (const { file, cid } of bbsFiles) {
+          const docName = path.basename(file, '.json');
+          const outputFile = path.join(outputDir, `${docName}-derived.json`);
+          
+          // Use a reasonable set of reveal pointers based on the credential type
+          const revealPointers = [
+            '/credentialSubject/givenName',
+            '/credentialSubject/familyName',
+            '/credentialSubject/birthCountry'
+          ].join(',');
+
+          await program.parseAsync([
+            '', '', 'derive-proof',
+            '-d', file,
+            '-r', revealPointers,
+            '-o', outputFile
+          ]);
+        }
+      }
+
+      // Verify all generated documents
+      console.log('Verifying generated documents...');
+      for (const { file, cid } of signedFiles) {
+        const shortName = cid.split(':').pop();
+        const cidFile = path.join(outputDir, `${shortName}-cid.json`);
+        await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', file]);
+      }
+
+      console.log('Generation complete! All files are in:', outputDir);
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
 program.parse(); 

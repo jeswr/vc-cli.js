@@ -1,0 +1,36 @@
+{
+  "@context": "https://www.w3.org/ns/cid/v1",
+  "id": "did:example:charlie",
+  "verificationMethod": [
+    {
+      "@context": "https://w3id.org/security/multikey/v1",
+      "id": "did:example:charlie#key-1",
+      "type": "Multikey",
+      "controller": "did:example:charlie",
+      "publicKeyMultibase": "z6MkgbQ765hkUoq4fzW1baKtYQXKNSYCui7TgtXwuJdtd4Ru"
+    },
+    {
+      "@context": "https://w3id.org/security/multikey/v1",
+      "id": "did:example:charlie#key-2",
+      "type": "Multikey",
+      "controller": "did:example:charlie",
+      "publicKeyMultibase": "zUC7957v2gxge8UskSG9C6YJz7xcGSc5rRLbADCdGayRHGwudAdjFU8w3na76GKEDZygmnXAmM5ZrmcRjxSf8sXeE83EQ7eNdBYxt9w43bGwaMscNA1LWz2ydFuU4LzLvxGHNiv"
+    }
+  ],
+  "authentication": [
+    "did:example:charlie#key-1",
+    "did:example:charlie#key-2"
+  ],
+  "assertionMethod": [
+    "did:example:charlie#key-1",
+    "did:example:charlie#key-2"
+  ],
+  "capabilityInvocation": [
+    "did:example:charlie#key-1",
+    "did:example:charlie#key-2"
+  ],
+  "capabilityDelegation": [
+    "did:example:charlie#key-1",
+    "did:example:charlie#key-2"
+  ]
+}
