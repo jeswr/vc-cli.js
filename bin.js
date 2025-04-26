@@ -171,7 +171,7 @@ program
           secretKeyMultibase: privateKey,
         }, { algorithm });
 
-        const date = '2023-03-01T21:29:24Z';
+        const date = new Date().toISOString();
         const suite = new DataIntegrityProof({
           signer: keyPair.signer(),
           date,
