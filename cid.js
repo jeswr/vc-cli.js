@@ -76,19 +76,7 @@ export async function generateCID(controller, options = {}) {
 
     privateKeys[verificationMethod.id] = bbsKeyPair.secretKeyMultibase;
 
-    // Note this is how to reconstruct the key pair from the verification method
-    // let kp = await Bls12381Multikey.from({
-    //   ...verificationMethod,
-    //   secretKeyMultibase: bbsKeyPair.secretKeyMultibase
-    // });
   }
 
   return { cid, privateKeys };
 }
-
-// const { cid, privateKeys } = await generateCID('https://example.org/jesse', {
-//   includeEd25519: true,
-//   includeBBS: true
-// });
-// console.log('CID Document:', JSON.stringify(cid, null, 2));
-// console.log('Private Keys:', privateKeys);
