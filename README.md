@@ -119,6 +119,7 @@ vc-cli generate [options]
 - `-s, --signatures <types>`: Comma-separated list of signature types to use (bbs,ed25519) [default: "bbs,ed25519"]
 - `--no-derive`: Skip creating derived proofs for BBS signatures
 - `-o, --output-dir <path>`: Output directory for generated files [default: "./generated"]
+- `--distribute`: Distribute documents across CIDs instead of having each CID sign all documents
 
 #### Example:
 
@@ -131,6 +132,9 @@ vc-cli generate -c "did:example:alice,did:example:bob" -d "./mocks/residence.jso
 
 # Generate with only BBS signatures and no derived proofs
 vc-cli generate -s bbs --no-derive
+
+# Generate with documents distributed across CIDs
+vc-cli generate --distribute
 ```
 
 The generate command will:
