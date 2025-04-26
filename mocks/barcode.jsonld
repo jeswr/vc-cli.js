@@ -4,8 +4,6 @@
     {
       "@context": {
         "@protected": true,
-        "id": "@id",
-        "type": "@type",
         "name": "https://schema.org/name",
         "description": "https://schema.org/description",
         "image": {
