@@ -8,7 +8,6 @@ import { Command } from 'commander';
 import { documentLoader } from './documentLoader.js';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const program = new Command();
 
@@ -31,7 +30,7 @@ program
       console.log('✅ JSON-LD document is valid in strict mode');
       process.exit(0);
     } catch (error) {
-      console.error('❌ JSON-LD validation failed:', error.message);
+      console.error('❌ JSON-LD validation failed:', error.message, '[', JSON.stringify(error, null, 2), ']');
       process.exit(1);
     }
   });
