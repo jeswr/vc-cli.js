@@ -395,10 +395,20 @@ program
       
       const signatures = options.signatures ? options.signatures.split(',') : ['bbs', 'ed25519'];
       const shouldDerive = options.derive !== false;
-      const outputDir = options.outputDir || './generated';
+      const baseOutputDir = options.outputDir || './generated';
 
-      // Create output directory
-      await fs.mkdir(outputDir, { recursive: true });
+      // Create output directories
+      const cidsDir = path.join(baseOutputDir, 'cids');
+      const bbsDir = path.join(baseOutputDir, 'bbs');
+      const ed25519Dir = path.join(baseOutputDir, 'ed25519');
+      const derivedDir = path.join(baseOutputDir, 'derived');
+
+      await Promise.all([
+        fs.mkdir(cidsDir, { recursive: true }),
+        fs.mkdir(bbsDir, { recursive: true }),
+        fs.mkdir(ed25519Dir, { recursive: true }),
+        fs.mkdir(derivedDir, { recursive: true })
+      ]);
 
       // Initialize combined private keys object
       const allPrivateKeys = {};
@@ -409,7 +419,7 @@ program
 
       for (const cid of cids) {
         const shortName = cid.split(':').pop(); // Extract 'alice' from 'did:example:alice'
-        const cidFile = path.join(outputDir, `${shortName}-cid.json`);
+        const cidFile = path.join(cidsDir, `${shortName}-cid.json`);
         
         // Generate CID and get private keys
         const { cid: cidDoc, privateKeys } = await generateCID(cid, {
@@ -428,7 +438,7 @@ program
       }
 
       // Save all private keys to a single file
-      const keysFile = path.join(outputDir, 'privateKeys.json');
+      const keysFile = path.join(baseOutputDir, 'privateKeys.json');
       await fs.writeFile(keysFile, JSON.stringify(allPrivateKeys, null, 2));
       console.log(`All private keys saved to: ${keysFile}`);
 
@@ -454,7 +464,8 @@ program
               continue;
             }
 
-            const outputFile = path.join(outputDir, `${docName}-${sigType}-${shortName}.json`);
+            const outputDir = sigType === 'bbs' ? bbsDir : ed25519Dir;
+            const outputFile = path.join(outputDir, `${docName}-${shortName}.json`);
             
             await program.parseAsync([
               '', '', 'sign-credential',
@@ -481,7 +492,7 @@ program
 
         for (const { file, cid } of bbsFiles) {
           const docName = path.basename(file, '.json');
-          const outputFile = path.join(outputDir, `${docName}-derived.json`);
+          const outputFile = path.join(derivedDir, `${docName}-derived.json`);
           
           // Use a reasonable set of reveal pointers based on the credential type
           const revealPointers = [
@@ -503,11 +514,15 @@ program
       console.log('Verifying generated documents...');
       for (const { file, cid } of signedFiles) {
         const shortName = cid.split(':').pop();
-        const cidFile = path.join(outputDir, `${shortName}-cid.json`);
+        const cidFile = path.join(cidsDir, `${shortName}-cid.json`);
         await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', file]);
       }
 
-      console.log('Generation complete! All files are in:', outputDir);
+      console.log('Generation complete! All files are organized in:', baseOutputDir);
+      console.log('- CIDs:', cidsDir);
+      console.log('- BBS Signatures:', bbsDir);
+      console.log('- Ed25519 Signatures:', ed25519Dir);
+      console.log('- Derived Credentials:', derivedDir);
     } catch (error) {
       console.error('Error:', error.message);
       process.exit(1);
