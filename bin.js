@@ -10,6 +10,11 @@ import * as bbs2023Cryptosuite from '@digitalbazaar/bbs-2023-cryptosuite';
 import { DataIntegrityProof } from '@digitalbazaar/data-integrity';
 import jsigs from 'jsonld-signatures';
 import { URL } from 'url';
+import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
+import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
+import * as vc from '@digitalbazaar/vc';
+import { documentLoader as defaultDocumentLoader } from './documentLoader.js';
+
 const {
   createSignCryptosuite,
   createVerifyCryptosuite,
@@ -154,13 +159,6 @@ program
         throw new Error(`Private key for ${options.keyId} not found`);
       }
 
-      // Import necessary modules
-      const { Ed25519VerificationKey2020 } = await import('@digitalbazaar/ed25519-verification-key-2020');
-      const { Ed25519Signature2020 } = await import('@digitalbazaar/ed25519-signature-2020');
-
-      const vc = await import('@digitalbazaar/vc');
-      const { documentLoader } = await import('./documentLoader.js');
-
       let suite;
       let keyPair;
       let signedVC;
@@ -185,7 +183,7 @@ program
         signedVC = await jsigs.sign(document, {
           suite,
           purpose: new AssertionProofPurpose(),
-          documentLoader
+          documentLoader: defaultDocumentLoader
         });
       } else {
         // Ed25519 signature
@@ -202,9 +200,8 @@ program
         signedVC = await vc.issue({
           credential: document,
           suite,
-          documentLoader
+          documentLoader: defaultDocumentLoader
         });
-
       }
 
       // Write the signed credential to the output file
@@ -230,12 +227,6 @@ program
       // Read the verifiable credential
       const documentContent = await fs.readFile(options.document, 'utf8');
       const document = JSON.parse(documentContent);
-
-      // Import necessary modules
-      const { Ed25519VerificationKey2020 } = await import('@digitalbazaar/ed25519-verification-key-2020');
-      const { Ed25519Signature2020 } = await import('@digitalbazaar/ed25519-signature-2020');
-      const vc = await import('@digitalbazaar/vc');
-      const { documentLoader: defaultDocumentLoader } = await import('./documentLoader.js');
 
       // Create a custom document loader that includes the CID document
       const documentLoader = async (url) => {
