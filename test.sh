@@ -28,3 +28,5 @@ node bin.js verify-credential -c ./alice.jsonld -d ./signed-residence.jsonld
 node bin.js verify-credential -c ./alice.jsonld -d ./derived-residence.jsonld
 
 node bin.js generate 
+
+node bin.js generate  -o ./generate-distributed --distribute

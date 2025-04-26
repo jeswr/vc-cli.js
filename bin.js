@@ -383,6 +383,7 @@ program
   .option('-s, --signatures <types>', 'Comma-separated list of signature types to use (bbs,ed25519) [default: "bbs,ed25519"]')
   .option('--no-derive', 'Skip creating derived proofs for BBS signatures')
   .option('-o, --output-dir <path>', 'Output directory for generated files [default: "./generated"]')
+  .option('--distribute', 'Distribute documents across CIDs instead of having each CID sign all documents')
   .action(async (options) => {
     try {
       // Parse options with defaults
@@ -403,13 +404,15 @@ program
       const signatures = options.signatures ? options.signatures.split(',') : ['bbs', 'ed25519'];
       const shouldDerive = options.derive !== false;
       const baseOutputDir = options.outputDir || './generated';
+      const distribute = options.distribute || false;
 
       console.log('\n=== Starting Generation Process ===');
       console.log(`Base output directory: ${baseOutputDir}`);
       console.log(`CIDs to generate: ${cids.join(', ')}`);
       console.log(`Documents to sign: ${documents.join(', ')}`);
       console.log(`Signature types: ${signatures.join(', ')}`);
-      console.log(`Derive proofs: ${shouldDerive ? 'Yes' : 'No'}\n`);
+      console.log(`Derive proofs: ${shouldDerive ? 'Yes' : 'No'}`);
+      console.log(`Distribute documents: ${distribute ? 'Yes' : 'No'}\n`);
 
       // Define directory paths and files
       const cidsDir = path.join(baseOutputDir, 'cids');
@@ -478,58 +481,68 @@ program
       console.log('=== Signing Credentials ===');
       const signedFiles = [];
 
-      for (const cidFile of cidFiles) {
+      // Helper function to sign a document with a CID
+      async function signDocumentWithCID(cidFile, docPath, signedFiles) {
         try {
           const cidContent = await fs.readFile(cidFile, 'utf8');
           const cid = JSON.parse(cidContent);
           const shortName = cid.id.split(':').pop();
-          console.log(`\nProcessing CID: ${cid.id}`);
+          const docName = path.basename(docPath, '.jsonld');
+          console.log(`\nProcessing document: ${docName} with CID: ${cid.id}`);
 
-          for (const docPath of documents) {
+          for (const sigType of signatures) {
             try {
-              const docName = path.basename(docPath, '.jsonld');
-              console.log(`\nSigning document: ${docName}`);
+              const keyId = cid.verificationMethod.find(vm =>
+                sigType === 'bbs' ? vm.publicKeyMultibase.startsWith('zUC7') : !vm.publicKeyMultibase.startsWith('zUC7')
+              )?.id;
 
-              for (const sigType of signatures) {
-                try {
-                  const keyId = cid.verificationMethod.find(vm =>
-                    sigType === 'bbs' ? vm.publicKeyMultibase.startsWith('zUC7') : !vm.publicKeyMultibase.startsWith('zUC7')
-                  )?.id;
-
-                  if (!keyId) {
-                    console.warn(`⚠️ No ${sigType} key found for CID ${cid.id}, skipping...`);
-                    continue;
-                  }
-
-                  const outputDir = sigType === 'bbs' ? bbsDir : ed25519Dir;
-                  const outputFile = path.join(outputDir, `${docName}-${shortName}.json`);
-
-                  console.log(`Signing with ${sigType.toUpperCase()}...`);
-                  await program.parseAsync([
-                    '', '', 'sign-credential',
-                    '-c', cidFile,
-                    '-k', keysFile,
-                    '-d', docPath,
-                    '-i', keyId,
-                    '-o', outputFile
-                  ]);
-                  console.log(`✓ Signed document saved to: ${outputFile}`);
-
-                  signedFiles.push({
-                    file: outputFile,
-                    type: sigType,
-                    cid: cid.id
-                  });
-                } catch (error) {
-                  throw new Error(`Failed to sign document ${docPath} with ${sigType} for CID ${cid.id}: ${error.message}`);
-                }
+              if (!keyId) {
+                console.warn(`⚠️ No ${sigType} key found for CID ${cid.id}, skipping...`);
+                continue;
               }
+
+              const outputDir = sigType === 'bbs' ? bbsDir : ed25519Dir;
+              const outputFile = path.join(outputDir, `${docName}-${shortName}.json`);
+
+              console.log(`Signing with ${sigType.toUpperCase()}...`);
+              await program.parseAsync([
+                '', '', 'sign-credential',
+                '-c', cidFile,
+                '-k', keysFile,
+                '-d', docPath,
+                '-i', keyId,
+                '-o', outputFile
+              ]);
+              console.log(`✓ Signed document saved to: ${outputFile}`);
+
+              signedFiles.push({
+                file: outputFile,
+                type: sigType,
+                cid: cid.id
+              });
             } catch (error) {
-              throw new Error(`Failed to process document ${docPath}: ${error.message}`);
+              throw new Error(`Failed to sign document ${docPath} with ${sigType} for CID ${cid.id}: ${error.message}`);
             }
           }
         } catch (error) {
           throw new Error(`Failed to process CID file ${cidFile}: ${error.message}`);
+        }
+      }
+
+      if (distribute) {
+        // Distribute documents across CIDs
+        for (let i = 0; i < documents.length; i++) {
+          const docPath = documents[i];
+          const cidIndex = i % cidFiles.length;
+          const cidFile = cidFiles[cidIndex];
+          await signDocumentWithCID(cidFile, docPath, signedFiles);
+        }
+      } else {
+        // Original behavior - each CID signs all documents
+        for (const cidFile of cidFiles) {
+          for (const docPath of documents) {
+            await signDocumentWithCID(cidFile, docPath, signedFiles);
+          }
         }
       }
       console.log('\n✓ All credentials signed successfully\n');
