@@ -538,9 +538,7 @@ program
             console.log(`\nDeriving proof for: ${docName}`);
             // Use a reasonable set of reveal pointers based on the credential type
             const revealPointers = [
-              '/credentialSubject/givenName',
-              '/credentialSubject/familyName',
-              '/credentialSubject/birthCountry'
+              '/credentialSubject',
             ].join(',');
 
             await program.parseAsync([
