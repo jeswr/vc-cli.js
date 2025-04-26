@@ -1,0 +1,56 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    {
+      "@context": {
+        "@protected": true,
+        "id": "@id",
+        "type": "@type",
+        "name": "https://schema.org/name",
+        "description": "https://schema.org/description",
+        "image": {
+          "@id": "https://schema.org/image",
+          "@type": "@id"
+        },
+        "url": {
+          "@id": "https://schema.org/url",
+          "@type": "@id"
+        },
+        "OpticalBarcodeCredential": "https://w3id.org/vdl#OpticalBarcodeCredential",
+        "TerseBitstringStatusListEntry": {
+          "@id": "https://w3id.org/vdl#TerseBitstringStatusListEntry",
+          "@context": {
+            "terseStatusListIndex": {
+              "@id": "https://w3id.org/vdl#terseStatusListIndex",
+              "@type": "http://www.w3.org/2001/XMLSchema#integer"
+            },
+            "terseStatusListBaseUrl": {
+              "@id": "https://w3id.org/vdl#terseStatusListBaseUrl",
+              "@type": "@id"
+            }
+          }
+        },
+        "UsDriversLicenseWithMandatoryFieldsPdf417Barcode": "https://example.gov/test#UsDriversLicenseWithMandatoryFieldsPdf417Barcode"
+      }
+    }
+  ],
+  "id": "urn:uuid:12345678-1234-5678-1234-567812345678",
+  "type": [
+    "VerifiableCredential",
+    "OpticalBarcodeCredential"
+  ],
+  "issuer": "did:example:123",
+  "issuanceDate": "2024-03-20T12:00:00Z",
+  "credentialSubject": {
+    "type": "UsDriversLicenseWithMandatoryFieldsPdf417Barcode",
+    "name": "John Doe",
+    "description": "US Driver's License with PDF417 Barcode",
+    "image": "data:image/png;base64,...",
+    "url": "https://example.gov/drivers-license/123456789"
+  },
+  "credentialStatus": {
+    "type": "TerseBitstringStatusListEntry",
+    "terseStatusListIndex": 0,
+    "terseStatusListBaseUrl": "https://example.gov/status/1"
+  }
+}
