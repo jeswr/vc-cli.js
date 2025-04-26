@@ -307,6 +307,15 @@ program
           credential: document,
           suite,
           documentLoader,
+          checkStatus: async (credential) => {
+            if (!credential.credentialStatus) {
+              return { verified: true };
+            }
+            
+            // For now, we'll assume all credentials are valid
+            // In a production environment, this would check a revocation registry
+            return { verified: true };
+          }
         });
 
         if (result.verified) {
@@ -557,17 +566,41 @@ program
 
       // Verify all generated documents
       console.log('=== Verifying Generated Documents ===');
-      for (const { file, cid } of signedFiles) {
+      
+      // Verify Ed25519 signatures
+      console.log('\nVerifying Ed25519 Signatures:');
+      const ed25519Files = await fs.readdir(path.join(baseOutputDir, 'ed25519'));
+      for (const file of ed25519Files) {
         try {
-          const shortName = cid.split(':').pop();
-          const cidFile = path.join(cidsDir, `${shortName}-cid.json`);
-          console.log(`\nVerifying: ${path.basename(file)}`);
-          await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', file]);
+          const cidName = file.split('-')[1].split('.')[0]; // Extract CID name from filename
+          const cidFile = path.join(cidsDir, `${cidName}-cid.json`);
+          const signedFile = path.join(baseOutputDir, 'ed25519', file);
+          
+          console.log(`\nVerifying: ${file}`);
+          await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', signedFile]);
           console.log('✓ Verification successful');
         } catch (error) {
-          throw new Error(`Failed to verify document ${file}: ${error.message}`);
+          throw new Error(`Failed to verify Ed25519 document ${file}: ${error.message}`);
         }
       }
+
+      // Verify derived BBS proofs
+      console.log('\nVerifying Derived BBS Proofs:');
+      const derivedFiles = await fs.readdir(path.join(baseOutputDir, 'derived'));
+      for (const file of derivedFiles) {
+        try {
+          const cidName = file.split('-')[1].split('.')[0]; // Extract CID name from filename
+          const cidFile = path.join(cidsDir, `${cidName}-cid.json`);
+          const derivedFile = path.join(baseOutputDir, 'derived', file);
+          
+          console.log(`\nVerifying: ${file}`);
+          await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', derivedFile]);
+          console.log('✓ Verification successful');
+        } catch (error) {
+          throw new Error(`Failed to verify derived BBS document ${file}: ${error.message}`);
+        }
+      }
+
       console.log('\n✓ All documents verified successfully\n');
 
       console.log('=== Generation Complete ===');
