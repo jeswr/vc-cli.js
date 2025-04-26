@@ -199,16 +199,16 @@ program
           key: keyPair,
           verificationMethod: verificationMethod.id
         });
-try {
-        // Sign the credential
-        signedVC = await vc.issue({
-          credential: document,
-          suite,
-          documentLoader: defaultDocumentLoader
-        });
-      } catch (error) {
-        throw new Error(`Failed to sign document using Ed25519 Signature: ${error.message}`);
-      }
+        try {
+          // Sign the credential
+          signedVC = await vc.issue({
+            credential: document,
+            suite,
+            documentLoader: defaultDocumentLoader
+          });
+        } catch (error) {
+          throw new Error(`Failed to sign document using Ed25519 Signature: ${error.message}`);
+        }
       }
 
       // Write the signed credential to the output file
@@ -383,14 +383,14 @@ program
         'did:example:charlie',
         'did:example:dave'
       ];
-      
+
       const documents = options.documents ? options.documents.split(',') : [
         './mocks/residence.jsonld',
         './mocks/barcode.jsonld',
         './mocks/employable.jsonld',
         './mocks/education.jsonld'
       ];
-      
+
       const signatures = options.signatures ? options.signatures.split(',') : ['bbs', 'ed25519'];
       const shouldDerive = options.derive !== false;
       const baseOutputDir = options.outputDir || './generated';
@@ -435,7 +435,7 @@ program
           console.log(`\nGenerating CID for: ${cid}`);
           const shortName = cid.split(':').pop(); // Extract 'alice' from 'did:example:alice'
           const cidFile = path.join(cidsDir, `${shortName}-cid.json`);
-          
+
           // Generate CID and get private keys
           const { cid: cidDoc, privateKeys } = await generateCID(cid, {
             includeEd25519: signatures.includes('ed25519'),
@@ -448,7 +448,7 @@ program
 
           // Merge private keys into combined object
           Object.assign(allPrivateKeys, privateKeys);
-          
+
           cidFiles.push(cidFile);
         } catch (error) {
           throw new Error(`Failed to generate CID for ${cid}: ${error.message}`);
@@ -480,10 +480,10 @@ program
             try {
               const docName = path.basename(docPath, '.jsonld');
               console.log(`\nSigning document: ${docName}`);
-              
+
               for (const sigType of signatures) {
                 try {
-                  const keyId = cid.verificationMethod.find(vm => 
+                  const keyId = cid.verificationMethod.find(vm =>
                     sigType === 'bbs' ? vm.publicKeyMultibase.startsWith('zUC7') : !vm.publicKeyMultibase.startsWith('zUC7')
                   )?.id;
 
@@ -494,7 +494,7 @@ program
 
                   const outputDir = sigType === 'bbs' ? bbsDir : ed25519Dir;
                   const outputFile = path.join(outputDir, `${docName}-${shortName}.json`);
-                  
+
                   console.log(`Signing with ${sigType.toUpperCase()}...`);
                   await program.parseAsync([
                     '', '', 'sign-credential',
@@ -534,7 +534,7 @@ program
           try {
             const docName = path.basename(file, '.json');
             const outputFile = path.join(derivedDir, `${docName}-derived.json`);
-            
+
             console.log(`\nDeriving proof for: ${docName}`);
             // Use a reasonable set of reveal pointers based on the credential type
             const revealPointers = [
