@@ -7,7 +7,6 @@
     "VerifiableCredential",
     "EmploymentAuthorizationDocumentCredential"
   ],
-  "issuer": "did:key:zDnaeW9VZZs7NH1ykvS5EMFmdodu2wj4dPcrV3DzTAadrXJee",
   "validFrom": "2023-12-03T12:19:52Z",
   "validUntil": "2028-12-03T12:19:52Z",
   "credentialSubject": {

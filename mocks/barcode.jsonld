@@ -37,8 +37,8 @@
     "VerifiableCredential",
     "OpticalBarcodeCredential"
   ],
-  "issuer": "did:example:123",
-  "issuanceDate": "2024-03-20T12:00:00Z",
+  "validFrom": "2023-12-03T12:19:52Z",
+  "validUntil": "2028-12-03T12:19:52Z",
   "credentialSubject": {
     "type": "UsDriversLicenseWithMandatoryFieldsPdf417Barcode",
     "name": "John Doe",

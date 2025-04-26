@@ -187,7 +187,7 @@ program
             documentLoader: defaultDocumentLoader
           });
         } catch (error) {
-          throw new Error(`Failed to sign document using BBS Signature: ${error.message}`);
+          throw new Error(`Failed to sign document using BBS Signature: ${error.message} [${JSON.stringify(error, null, 2)}]`);
         }
       } else {
         // Ed25519 signature
