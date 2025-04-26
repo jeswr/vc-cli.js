@@ -7,3 +7,5 @@ node ./bin.js derive-proof -d ./bbs-signed-residence.jsonld -r '/credentialSubje
 
 node bin.js verify-credential -c ./alice.jsonld -d ./signed-residence.jsonld
 node bin.js verify-credential -c ./alice.jsonld -d ./derived-residence.jsonld
+
+node bin.js generate 
