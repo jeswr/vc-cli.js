@@ -81,7 +81,7 @@ program
           if (stats.isDirectory()) {
             // If it's a directory, create a file named after the encoded controller
             const encodedController = encodeURIComponent(options.controller);
-            outputPath = path.join(outputPath, `${encodedController}.json`);
+            outputPath = path.join(outputPath, `${encodedController}.jsonld`);
           }
         } catch (error) {
           // If the path doesn't exist, assume it's a file path
@@ -446,7 +446,7 @@ program
         try {
           console.log(`\nGenerating CID for: ${cid}`);
           const shortName = cid.split(':').pop(); // Extract 'alice' from 'did:example:alice'
-          const cidFile = path.join(cidsDir, `${shortName}-cid.json`);
+          const cidFile = path.join(cidsDir, `${shortName}-cid.jsonld`);
 
           // Generate CID and get private keys
           const { cid: cidDoc, privateKeys } = await generateCID(cid, {
@@ -502,7 +502,7 @@ program
               }
 
               const outputDir = sigType === 'bbs' ? bbsDir : ed25519Dir;
-              const outputFile = path.join(outputDir, `${docName}-${shortName}.json`);
+              const outputFile = path.join(outputDir, `${docName}-${shortName}.jsonld`);
 
               console.log(`Signing with ${sigType.toUpperCase()}...`);
               await program.parseAsync([
@@ -554,8 +554,8 @@ program
 
         for (const { file } of bbsFiles) {
           try {
-            const docName = path.basename(file, '.json');
-            const outputFile = path.join(derivedDir, `${docName}-derived.json`);
+            const docName = path.basename(file, '.jsonld');
+            const outputFile = path.join(derivedDir, `${docName}-derived.jsonld`);
 
             console.log(`\nDeriving proof for: ${docName}`);
             // Use a reasonable set of reveal pointers based on the credential type
@@ -586,7 +586,7 @@ program
       for (const file of ed25519Files) {
         try {
           const cidName = file.split('-')[1].split('.')[0]; // Extract CID name from filename
-          const cidFile = path.join(cidsDir, `${cidName}-cid.json`);
+          const cidFile = path.join(cidsDir, `${cidName}-cid.jsonld`);
           const signedFile = path.join(baseOutputDir, 'ed25519', file);
           
           console.log(`\nVerifying: ${file}`);
@@ -603,7 +603,7 @@ program
       for (const file of derivedFiles) {
         try {
           const cidName = file.split('-')[1].split('.')[0]; // Extract CID name from filename
-          const cidFile = path.join(cidsDir, `${cidName}-cid.json`);
+          const cidFile = path.join(cidsDir, `${cidName}-cid.jsonld`);
           const derivedFile = path.join(baseOutputDir, 'derived', file);
           
           console.log(`\nVerifying: ${file}`);
