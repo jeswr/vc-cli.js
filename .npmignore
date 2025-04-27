@@ -12,3 +12,4 @@ signed-residence.jsonld
 bbs-signed-residence.jsonld
 derived-residence.jsonld
 generate-distributed/
+!mocks/

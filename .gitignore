@@ -4,3 +4,4 @@ generate-distributed/
 test-pkg/
 *.ttl
 *.jsonld
+!mocks/
