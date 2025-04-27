@@ -17,6 +17,7 @@ import { documentLoader as defaultDocumentLoader } from './documentLoader.js';
 import { write } from '@jeswr/pretty-turtle';
 import dereference from 'rdf-dereference-store';
 import { DataFactory } from 'n3';
+import { randomUUID } from 'crypto';
 
 const {
   createSignCryptosuite,
@@ -132,6 +133,8 @@ program
   .requiredOption('-d, --document <path>', 'Path to JSON-LD document to sign')
   .requiredOption('-i, --key-id <id>', 'ID of the key to use for signing')
   .requiredOption('-o, --output <path>', 'Output path for signed credential')
+  .option('--credential-id <id>', 'ID for the credential (optional)')
+  .option('--subject-id <id>', 'ID for the credential subject (optional)')
   .action(async (options) => {
     try {
       // Read the CID document
@@ -149,6 +152,19 @@ program
       document.issuer = {
         "id": cid.id
       };
+
+      // Add credential ID if provided
+      if (options.credentialId) {
+        document.id = options.credentialId;
+      }
+
+      // Add credential subject ID if provided
+      if (options.subjectId) {
+        if (!document.credentialSubject) {
+          document.credentialSubject = {};
+        }
+        document.credentialSubject.id = options.subjectId;
+      }
 
       // Find the verification method in the CID document
       const verificationMethod = cid.verificationMethod.find(vm => vm.id === options.keyId);
@@ -388,6 +404,7 @@ program
   .option('-o, --output-dir <path>', 'Output directory for generated files [default: "./generated"]')
   .option('--distribute', 'Distribute documents across CIDs instead of having each CID sign all documents')
   .option('--collect', 'Collect all generated files into a single Turtle file')
+  .option('--subject-id <id>', 'ID for the credential subject (optional)')
   .action(async (options) => {
     try {
       // Parse options with defaults
@@ -409,6 +426,7 @@ program
       const shouldDerive = options.derive !== false;
       const baseOutputDir = options.outputDir || './generated';
       const distribute = options.distribute || false;
+      const subjectId = options.subjectId || `did:example:${randomUUID()}`;
 
       console.log('\n=== Starting Generation Process ===');
       console.log(`Base output directory: ${baseOutputDir}`);
@@ -416,7 +434,8 @@ program
       console.log(`Documents to sign: ${documents.join(', ')}`);
       console.log(`Signature types: ${signatures.join(', ')}`);
       console.log(`Derive proofs: ${shouldDerive ? 'Yes' : 'No'}`);
-      console.log(`Distribute documents: ${distribute ? 'Yes' : 'No'}\n`);
+      console.log(`Distribute documents: ${distribute ? 'Yes' : 'No'}`);
+      console.log(`Credential Subject ID: ${subjectId}\n`);
 
       // Define directory paths and files
       const cidsDir = path.join(baseOutputDir, 'cids');
@@ -507,6 +526,7 @@ program
 
               const outputDir = sigType === 'bbs' ? bbsDir : ed25519Dir;
               const outputFile = path.join(outputDir, `${docName}-${shortName}.jsonld`);
+              const credentialId = `urn:uuid:${randomUUID()}`;
 
               console.log(`Signing with ${sigType.toUpperCase()}...`);
               await program.parseAsync([
@@ -515,7 +535,9 @@ program
                 '-k', keysFile,
                 '-d', docPath,
                 '-i', keyId,
-                '-o', outputFile
+                '-o', outputFile,
+                '--credential-id', credentialId,
+                '--subject-id', subjectId
               ]);
               console.log(`✓ Signed document saved to: ${outputFile}`);
 
@@ -694,7 +716,8 @@ program
         gov: 'https://example.gov/test#',
         xsd: 'http://www.w3.org/2001/XMLSchema#',
         status: 'https://example.gov/status/',
-        lic: 'https://example.gov/drivers-license/'
+        lic: 'https://example.gov/drivers-license/',
+        aamva: 'https://w3id.org/vdl/aamva#'
       };
 
       // Serialize to Turtle

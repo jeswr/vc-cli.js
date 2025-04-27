@@ -14,15 +14,14 @@
       "PermanentResident",
       "Person"
     ],
-    "id": "did:key:123456778rdf43ewer46d",
-    "givenName": "JANE",
-    "familyName": "SMITH",
-    "gender": "Female",
+    "givenName": "JOHN",
+    "familyName": "DOE",
+    "gender": "MALE",
     "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P4v43hPwAHIgK1v4tX6wAAAABJRU5ErkJggg==",
     "residentSince": "2015-01-01",
+    "birthCountry": "Bahamas",
+    "birthDate": "1958-07-17",
     "commuterClassification": "C1",
-    "birthCountry": "Arcadia",
-    "birthDate": "1978-07-17",
     "permanentResidentCard": {
       "type": [
         "PermanentResidentCard"

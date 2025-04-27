@@ -432,7 +432,6 @@
       }
     }
   ],
-  "id": "urn:uuid:a63a60be-f4af-491c-87fc-2c8fd3007a58",
   "type": [
     "VerifiableCredential",
     "OpenBadgeCredential"
@@ -442,7 +441,6 @@
   "validUntil": "2028-12-03T12:19:52Z",
   "credentialSubject": {
     "type": ["AchievementSubject"],
-    "id": "did:key:123456778rdf43ewer46d",
     "achievement": {
       "id": "urn:uuid:bd6d9316-f7ae-4073-a1e5-2f7f5bd22922",
       "type": ["Achievement"],

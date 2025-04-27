@@ -55,11 +55,17 @@ vc-cli sign-credential -c <cid-path> -k <keys-path> -d <document-path> -i <key-i
 - `-d, --document <path>`: Path to JSON-LD document to sign (required)
 - `-i, --key-id <id>`: ID of the key to use for signing (required)
 - `-o, --output <path>`: Output path for signed credential (required)
+- `--credential-id <id>`: ID for the credential (optional)
+- `--subject-id <id>`: ID for the credential subject (optional)
 
 #### Example:
 
 ```bash
+# Sign a credential with default options
 vc-cli sign-credential -c cid.json -k keys.json -d credential.json -i key-1 -o signed-credential.json
+
+# Sign a credential with custom IDs
+vc-cli sign-credential -c cid.json -k keys.json -d credential.json -i key-1 -o signed-credential.json --credential-id "urn:uuid:123" --subject-id "did:example:subject"
 ```
 
 ### Verify Credential
@@ -121,6 +127,7 @@ vc-cli generate [options]
 - `-o, --output-dir <path>`: Output directory for generated files [default: "./generated"]
 - `--distribute`: Distribute documents across CIDs instead of having each CID sign all documents
 - `--collect`: Collect all generated files into a single Turtle file named `collected.ttl` in the output directory
+- `--subject-id <id>`: ID for the credential subject (optional, defaults to a random DID)
 
 #### Example:
 
@@ -142,6 +149,9 @@ vc-cli generate --collect
 
 # Generate to a custom directory and collect files
 vc-cli generate -o ./my-output --collect
+
+# Generate with a specific credential subject ID
+vc-cli generate --subject-id "did:example:123"
 ```
 
 The generate command will:

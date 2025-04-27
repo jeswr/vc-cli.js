@@ -1,54 +1,47 @@
 {
   "@context": [
     "https://www.w3.org/ns/credentials/v2",
-    {
-      "@context": {
-        "@protected": true,
-        "name": "https://schema.org/name",
-        "description": "https://schema.org/description",
-        "image": {
-          "@id": "https://schema.org/image",
-          "@type": "@id"
-        },
-        "url": {
-          "@id": "https://schema.org/url",
-          "@type": "@id"
-        },
-        "OpticalBarcodeCredential": "https://w3id.org/vdl#OpticalBarcodeCredential",
-        "TerseBitstringStatusListEntry": {
-          "@id": "https://w3id.org/vdl#TerseBitstringStatusListEntry",
-          "@context": {
-            "terseStatusListIndex": {
-              "@id": "https://w3id.org/vdl#terseStatusListIndex",
-              "@type": "http://www.w3.org/2001/XMLSchema#integer"
-            },
-            "terseStatusListBaseUrl": {
-              "@id": "https://w3id.org/vdl#terseStatusListBaseUrl",
-              "@type": "@id"
-            }
-          }
-        },
-        "UsDriversLicenseWithMandatoryFieldsPdf417Barcode": "https://example.gov/test#UsDriversLicenseWithMandatoryFieldsPdf417Barcode"
-      }
-    }
-  ],
-  "id": "urn:uuid:12345678-1234-5678-1234-567812345678",
-  "type": [
-    "VerifiableCredential",
-    "OpticalBarcodeCredential"
+    "https://w3id.org/vdl/v2",
+    "https://w3id.org/vdl/aamva/v1"
   ],
   "validFrom": "2023-12-03T12:19:52Z",
   "validUntil": "2028-12-03T12:19:52Z",
+  "type": [
+    "VerifiableCredential",
+    "Iso18013DriversLicenseCredential"
+  ],
+  "name": "Utopia Driver's License",
+  "image": "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUg...kSuQmCC",
+  "description": "A license granting driving privileges in Utopia.",
   "credentialSubject": {
-    "type": "UsDriversLicenseWithMandatoryFieldsPdf417Barcode",
-    "name": "John Doe",
-    "description": "US Driver's License with PDF417 Barcode",
-    "image": "data:image/png;base64,...",
-    "url": "https://example.gov/drivers-license/123456789"
-  },
-  "credentialStatus": {
-    "type": "TerseBitstringStatusListEntry",
-    "terseStatusListIndex": 0,
-    "terseStatusListBaseUrl": "https://example.gov/status/1"
+    "type": "LicensedDriver",
+    "driversLicense": {
+      "type": "Iso18013DriversLicense",
+      "document_number": "542426814",
+      "family_name": "DOE",
+      "given_name": "JOHN",
+      "portrait": "data:image/jpeg;base64,/9j/4AAQSkZJR...RSClooooP/2Q==",
+      "issue_date": "2023-01-15T10:00:00-07:00",
+      "expiry_date": "2028-08-27T12:00:00-06:00",
+      "issuing_country": "UA",
+      "issuing_authority": "UADMV",
+      "driving_privileges": [{
+        "codes": [{"code": "D"}],
+        "vehicle_category_code": "D",
+        "issue_date": "2019-01-01",
+        "expiry_date": "2027-01-01"
+      },
+      {
+        "codes": [{"code": "C"}],
+        "vehicle_category_code": "C",
+        "issue_date": "2019-01-01",
+        "expiry_date": "2017-01-01"
+      }],
+      "un_distinguishing_sign": "UTA",
+      "aamva_aka_suffix": "1ST",
+      "sex": 2,
+      "aamva_family_name_truncation": "N",
+      "aamva_given_name_truncation": "N"
+    }
   }
 }
