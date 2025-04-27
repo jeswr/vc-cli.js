@@ -1,5 +1,6 @@
 import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
 import * as Bls12381Multikey from '@digitalbazaar/bls12-381-multikey';
+import * as EcdsaMultikey from '@digitalbazaar/ecdsa-multikey';
 
 /**
  * Generates a CID (Controlled Identifier) document according to the W3C specification
@@ -7,12 +8,14 @@ import * as Bls12381Multikey from '@digitalbazaar/bls12-381-multikey';
  * @param {Object} options - Options for key generation
  * @param {boolean} [options.includeEd25519=true] - Whether to include Ed25519 verification method
  * @param {boolean} [options.includeBBS=true] - Whether to include BBS+ verification method
+ * @param {boolean} [options.includeEcdsa=true] - Whether to include ECDSA verification method
  * @returns {Promise<{cid: Object, privateKeys: Object}>} - The CID document and associated private keys
  */
 export async function generateCID(controller, options = {}) {
   const {
     includeEd25519 = true,
-    includeBBS = true
+    includeBBS = true,
+    includeEcdsa = true
   } = options;
 
   const cid = {
@@ -74,7 +77,31 @@ export async function generateCID(controller, options = {}) {
     cid.capabilityDelegation.push(verificationMethod.id);
 
     privateKeys[verificationMethod.id] = bbsKeyPair.secretKeyMultibase;
+  }
 
+  // Generate ECDSA key pair if requested
+  if (includeEcdsa) {
+    const ecdsaKeyPair = await EcdsaMultikey.generate({
+      id: `${controller}#key-${i++}`,
+      controller: controller,
+      curve: 'P-256'
+    });
+    const verificationMethod = {
+      '@context': 'https://w3id.org/security/multikey/v1',
+      id: `${controller}#key-${i}`,
+      type: 'Multikey',
+      controller: controller,
+      publicKeyMultibase: ecdsaKeyPair.publicKeyMultibase
+    };
+
+    cid.verificationMethod.push(verificationMethod);
+    cid.authentication.push(verificationMethod.id);
+    cid.assertionMethod.push(verificationMethod.id);
+    cid.capabilityInvocation.push(verificationMethod.id);
+    cid.capabilityDelegation.push(verificationMethod.id);
+
+    // Store the secret key in multibase format
+    privateKeys[verificationMethod.id] = ecdsaKeyPair.secretKeyMultibase;
   }
 
   return { cid, privateKeys };

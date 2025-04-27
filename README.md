@@ -29,6 +29,7 @@ vc-cli generate-cid -c <controller-did> [options]
 - `-k, --keys <path>`: Path to save private keys JSON file
 - `--no-ed25519`: Exclude Ed25519 signature type
 - `--no-bbs`: Exclude BBS+ signature type
+- `--no-ecdsa`: Exclude ECDSA signature type
 
 #### Examples:
 
@@ -42,7 +43,7 @@ vc-cli generate-cid -c did:example:123 -o cid.json -k keys.json
 
 ### Sign Credential
 
-Sign a verifiable credential using a CID document and private keys.
+Sign a verifiable credential using a CID document and private keys. Supports Ed25519, BBS+, and ECDSA signature types.
 
 ```bash
 vc-cli sign-credential -c <cid-path> -k <keys-path> -d <document-path> -i <key-id> -o <output-path>
@@ -89,7 +90,7 @@ vc-cli verify-credential -c cid.json -d signed-credential.json
 
 ### Derive Credential
 
-Create a derived BBS proof from a signed credential, revealing only specific fields while maintaining the cryptographic integrity of the original credential.
+Create a derived proof from a signed credential, revealing only specific fields while maintaining the cryptographic integrity of the original credential. Supports BBS+ and ECDSA signature types.
 
 ```bash
 vc-cli derive-proof -d <document-path> -r <pointers> -o <output-path>
@@ -122,8 +123,8 @@ vc-cli generate [options]
 
 - `-c, --cids <ids>`: Comma-separated list of CID controller DIDs [default: "did:example:alice,did:example:bob,did:example:charlie,did:example:dave"]
 - `-d, --documents <paths>`: Comma-separated list of credential document paths to sign [default: all mock credentials]
-- `-s, --signatures <types>`: Comma-separated list of signature types to use (bbs,ed25519) [default: "bbs,ed25519"]
-- `--no-derive`: Skip creating derived proofs for BBS signatures
+- `-s, --signatures <types>`: Comma-separated list of signature types to use (bbs,ed25519,ecdsa) [default: "bbs,ed25519,ecdsa"]
+- `--no-derive`: Skip creating derived proofs for BBS and ECDSA signatures
 - `-o, --output-dir <path>`: Output directory for generated files [default: "./generated"]
 - `--distribute`: Distribute documents across CIDs instead of having each CID sign all documents
 - `--collect`: Collect all generated files into a single Turtle file named `collected.ttl` in the output directory
@@ -157,7 +158,7 @@ vc-cli generate --subject-id "did:example:123"
 The generate command will:
 1. Create CIDs for each specified controller DID
 2. Sign each document with each CID using the specified signature types
-3. Create derived proofs for BBS signatures (unless disabled)
+3. Create derived proofs for BBS and ECDSA signatures (unless disabled)
 4. Save all generated files in the specified output directory
 5. Verify all generated documents
 6. If `--collect` is specified, collect all generated files into a single Turtle file named `collected.ttl` in the output directory

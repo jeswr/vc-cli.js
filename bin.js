@@ -18,6 +18,8 @@ import { write } from '@jeswr/pretty-turtle';
 import dereference from 'rdf-dereference-store';
 import { DataFactory } from 'n3';
 import { randomUUID } from 'crypto';
+import * as EcdsaSd2023Cryptosuite from '@digitalbazaar/ecdsa-sd-2023-cryptosuite';
+import * as EcdsaMultikey from '@digitalbazaar/ecdsa-multikey';
 
 const {
   createSignCryptosuite,
@@ -70,11 +72,13 @@ program
   .option('-k, --keys <path>', 'Path to save private keys JSON file')
   .option('--no-ed25519', 'Exclude Ed25519 signature type')
   .option('--no-bbs', 'Exclude BBS+ signature type')
+  .option('--no-ecdsa', 'Exclude ECDSA signature type')
   .action(async (options) => {
     try {
       const { cid, privateKeys } = await generateCID(options.controller, {
         includeEd25519: options.ed25519,
-        includeBBS: options.bbs
+        includeBBS: options.bbs,
+        includeEcdsa: options.ecdsa
       });
 
       // Handle CID document output
@@ -184,6 +188,7 @@ program
 
       // Determine which signature suite to use based on the key type
       if (verificationMethod.publicKeyMultibase.startsWith('zUC7')) {
+        // BBS+ signature
         const algorithm = Bls12381Multikey.ALGORITHMS.BBS_BLS12381_SHA256;
         const keyPair = await Bls12381Multikey.from({
           ...verificationMethod,
@@ -207,6 +212,33 @@ program
           });
         } catch (error) {
           throw new Error(`Failed to sign document using BBS Signature: ${error.message} [${JSON.stringify(error, null, 2)}]`);
+        }
+      } else if (verificationMethod.publicKeyMultibase.startsWith('zDna')) {
+        // ECDSA signature
+        const keyPair = await EcdsaMultikey.from({
+          ...verificationMethod,
+          secretKeyMultibase: privateKey
+        });
+
+        const date = new Date().toISOString();
+        const suite = new DataIntegrityProof({
+          signer: keyPair.signer(),
+          date,
+          cryptosuite: EcdsaSd2023Cryptosuite.createSignCryptosuite({
+            mandatoryPointers: ['/issuer']
+          })
+        });
+
+        try {
+          signedVC = await jsigs.sign(document, {
+            suite,
+            purpose: new AssertionProofPurpose(),
+            documentLoader: defaultDocumentLoader
+          });
+          // Ensure the verificationMethod is set correctly in the proof
+          signedVC.proof.verificationMethod = verificationMethod.id;
+        } catch (error) {
+          throw new Error(`Failed to sign document using ECDSA Signature: ${error.message}`);
         }
       } else {
         // Ed25519 signature
@@ -309,6 +341,36 @@ program
           console.error(result.error);
           process.exit(1);
         }
+      } else if (verificationMethod.publicKeyMultibase.startsWith('u2V0')) {
+        // ECDSA signature
+        keyPair = await EcdsaMultikey.from({
+          ...verificationMethod,
+          controller: document.issuer.id
+        });
+        const cryptosuite = EcdsaSd2023Cryptosuite.createVerifyCryptosuite({
+          mandatoryPointers: ['/issuer']
+        });
+        suite = new MyDataIntegrityProof({
+          verifier: keyPair.verifier(),
+          cryptosuite,
+        });
+
+        // Verify the credential
+        const result = await jsigs.verify(document, {
+          suite,
+          purpose: new AssertionProofPurpose({
+            controller: cid
+          }),
+          documentLoader
+        });
+
+        if (result.verified) {
+          console.log('Credential verified successfully!');
+        } else {
+          console.error('Credential verification failed:');
+          console.error(result.error);
+          process.exit(1);
+        }
       } else {
         // Ed25519 signature
         keyPair = await Ed25519VerificationKey2020.from({
@@ -319,7 +381,6 @@ program
           key: keyPair,
           verificationMethod: verificationMethod.id
         });
-
 
         // Verify the credential
         const result = await vc.verifyCredential({
@@ -345,7 +406,6 @@ program
           process.exit(1);
         }
       }
-
     } catch (error) {
       console.error('Error:', error.message);
       process.exit(1);
@@ -354,8 +414,8 @@ program
 
 program
   .command('derive-proof')
-  .description('Create a derived BBS proof from a signed input BBS document')
-  .requiredOption('-d, --document <path>', 'Path to signed BBS document')
+  .description('Create a derived proof from a signed input document')
+  .requiredOption('-d, --document <path>', 'Path to signed document')
   .requiredOption('-r, --reveal <pointers>', 'Comma-separated list of JSON pointers to reveal (e.g. /credentialSubject/name,/credentialSubject/age)')
   .requiredOption('-o, --output <path>', 'Output path for derived document')
   .action(async (options) => {
@@ -364,16 +424,29 @@ program
       const documentContent = await fs.readFile(options.document, 'utf8');
       const document = JSON.parse(documentContent);
 
+      console.log('Document proof:', JSON.stringify(document.proof, null, 2));
+
       // Parse the reveal pointers
       const revealPointers = options.reveal.split(',').map(pointer => pointer.trim());
 
       // Import necessary modules
       const { documentLoader } = await import('./documentLoader.js');
 
-      // Create the disclose cryptosuite with the reveal pointers
-      const cryptosuite = createDiscloseCryptosuite({
-        selectivePointers: revealPointers
-      });
+      let cryptosuite;
+      if (document.proof.cryptosuite === 'bbs-2023') {
+        // BBS+ derivation
+        cryptosuite = createDiscloseCryptosuite({
+          selectivePointers: revealPointers
+        });
+      } else if (document.proof.cryptosuite === 'ecdsa-sd-2023') {
+        // ECDSA derivation
+        cryptosuite = EcdsaSd2023Cryptosuite.createDiscloseCryptosuite({
+          selectivePointers: revealPointers
+        });
+      } else {
+        console.error('Cryptosuite:', document.proof.cryptosuite);
+        throw new Error('Unsupported signature type for derivation. Only BBS+ and ECDSA signatures are supported.');
+      }
 
       // Create the proof suite
       const suite = new DataIntegrityProof({ cryptosuite });
@@ -399,8 +472,8 @@ program
   .description('Generate CIDs, sign credentials, and create derived proofs')
   .option('-c, --cids <ids>', 'Comma-separated list of CID controller DIDs [default: "did:example:alice,did:example:bob,did:example:charlie,did:example:dave"]')
   .option('-d, --documents <paths>', 'Comma-separated list of credential document paths to sign [default: all mock credentials]')
-  .option('-s, --signatures <types>', 'Comma-separated list of signature types to use (bbs,ed25519) [default: "bbs,ed25519"]')
-  .option('--no-derive', 'Skip creating derived proofs for BBS signatures')
+  .option('-s, --signatures <types>', 'Comma-separated list of signature types to use (bbs,ed25519,ecdsa) [default: "bbs,ed25519,ecdsa"]')
+  .option('--no-derive', 'Skip creating derived proofs for BBS and ECDSA signatures')
   .option('-o, --output-dir <path>', 'Output directory for generated files [default: "./generated"]')
   .option('--distribute', 'Distribute documents across CIDs instead of having each CID sign all documents')
   .option('--collect', 'Collect all generated files into a single Turtle file')
@@ -422,7 +495,7 @@ program
         path.join(__dirname, 'mocks/education.jsonld')
       ];
 
-      const signatures = options.signatures ? options.signatures.split(',') : ['bbs', 'ed25519'];
+      const signatures = options.signatures ? options.signatures.split(',') : ['bbs', 'ed25519', 'ecdsa'];
       const shouldDerive = options.derive !== false;
       const baseOutputDir = options.outputDir || './generated';
       const distribute = options.distribute || false;
@@ -474,7 +547,8 @@ program
           // Generate CID and get private keys
           const { cid: cidDoc, privateKeys } = await generateCID(cid, {
             includeEd25519: signatures.includes('ed25519'),
-            includeBBS: signatures.includes('bbs')
+            includeBBS: signatures.includes('bbs'),
+            includeEcdsa: signatures.includes('ecdsa')
           });
 
           // Save CID document
@@ -516,7 +590,9 @@ program
           for (const sigType of signatures) {
             try {
               const keyId = cid.verificationMethod.find(vm =>
-                sigType === 'bbs' ? vm.publicKeyMultibase.startsWith('zUC7') : !vm.publicKeyMultibase.startsWith('zUC7')
+                sigType === 'bbs' ? vm.publicKeyMultibase.startsWith('zUC7') :
+                sigType === 'ecdsa' ? vm.publicKeyMultibase.startsWith('zDna') :
+                !vm.publicKeyMultibase.startsWith('zUC7') && !vm.publicKeyMultibase.startsWith('zDna')
               )?.id;
 
               if (!keyId) {
@@ -524,7 +600,9 @@ program
                 continue;
               }
 
-              const outputDir = sigType === 'bbs' ? bbsDir : ed25519Dir;
+              const outputDir = sigType === 'bbs' ? bbsDir :
+                sigType === 'ecdsa' ? ed25519Dir :
+                ed25519Dir;
               const outputFile = path.join(outputDir, `${docName}-${shortName}.jsonld`);
               const credentialId = `urn:uuid:${randomUUID()}`;
 
@@ -573,10 +651,11 @@ program
       }
       console.log('\n✓ All credentials signed successfully\n');
 
-      // Create derived proofs for BBS signatures
+      // Create derived proofs for BBS and ECDSA signatures
       if (shouldDerive) {
         console.log('=== Creating Derived Proofs ===');
         const bbsFiles = signedFiles.filter(f => f.type === 'bbs');
+        const ecdsaFiles = signedFiles.filter(f => f.type === 'ecdsa');
 
         for (const { file } of bbsFiles) {
           try {
@@ -600,6 +679,30 @@ program
             throw new Error(`Failed to derive proof for ${file}: ${error.message}`);
           }
         }
+
+        for (const { file } of ecdsaFiles) {
+          try {
+            const docName = path.basename(file, '.jsonld');
+            const outputFile = path.join(derivedDir, `${docName}-derived.jsonld`);
+
+            console.log(`\nDeriving proof for: ${docName}`);
+            // Use a reasonable set of reveal pointers based on the credential type
+            const revealPointers = [
+              '/credentialSubject',
+            ].join(',');
+
+            await program.parseAsync([
+              '', '', 'derive-proof',
+              '-d', file,
+              '-r', revealPointers,
+              '-o', outputFile
+            ]);
+            console.log(`✓ Derived proof saved to: ${outputFile}`);
+          } catch (error) {
+            throw new Error(`Failed to derive proof for ${file}: ${error.message}`);
+          }
+        }
+
         console.log('\n✓ All proofs derived successfully\n');
       }
 
@@ -625,18 +728,28 @@ program
 
       // Verify derived BBS proofs
       console.log('\nVerifying Derived BBS Proofs:');
-      const derivedFiles = await fs.readdir(path.join(baseOutputDir, 'derived'));
-      for (const file of derivedFiles) {
+      const derivedBBSFiles = await fs.readdir(path.join(baseOutputDir, 'derived'));
+      for (const file of derivedBBSFiles) {
         try {
           const cidName = file.split('-')[1].split('.')[0]; // Extract CID name from filename
           const cidFile = path.join(cidsDir, `${cidName}-cid.jsonld`);
           const derivedFile = path.join(baseOutputDir, 'derived', file);
           
           console.log(`\nVerifying: ${file}`);
-          await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', derivedFile]);
+          // For derived proofs, we need to use the BBS verification method
+          const documentContent = await fs.readFile(derivedFile, 'utf8');
+          const document = JSON.parse(documentContent);
+          
+          if (document.proof.cryptosuite === 'bbs-2023') {
+            await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', derivedFile]);
+          } else if (document.proof.cryptosuite === 'ecdsa-sd-2023') {
+            await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', derivedFile]);
+          } else {
+            throw new Error(`Unsupported cryptosuite for derived proof: ${document.proof.cryptosuite}`);
+          }
           console.log('✓ Verification successful');
         } catch (error) {
-          throw new Error(`Failed to verify derived BBS document ${file}: ${error.message}`);
+          throw new Error(`Failed to verify derived document ${file}: ${error.message}`);
         }
       }
 
@@ -679,8 +792,6 @@ program
       const jsonldFiles = files.filter(file => file.endsWith('.jsonld'))
         .map(file => path.join(options.directory, file))
         .filter(file => !file.includes('-cid.jsonld'));
-
-
 
       if (jsonldFiles.length === 0) {
         throw new Error('No JSON-LD files found in the specified directory');
