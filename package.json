@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
+  "files": [
+    "bin.js",
+    "cid.js",
+    "documentLoader.js",
+    "mocks/**/*",
+    ".cache/**/*"
+  ],
   "bin": {
     "vc-cli": "bin.js"
   },
