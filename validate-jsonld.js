@@ -2,12 +2,8 @@
 
 import { promises as fs } from 'fs';
 import jsonld from 'jsonld';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
 import { Command } from 'commander';
 import { documentLoader } from './documentLoader.js';
-
-const __filename = fileURLToPath(import.meta.url);
 
 const program = new Command();
 

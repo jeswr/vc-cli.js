@@ -18,7 +18,6 @@ export async function generateCID(controller, options = {}) {
   const cid = {
     '@context': "https://www.w3.org/ns/cid/v1",
     id: controller,
-    // controller: controller,
     verificationMethod: [],
     authentication: [],
     assertionMethod: [],
