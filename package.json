@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "bin": {
-    "vc-cli": "./bin.js"
+    "vc-cli": "bin.js"
   },
   "scripts": {
     "test": "bash ./test.sh && bash ./clean.sh",
