@@ -5,7 +5,7 @@
       "id": "@id",
       "type": "@type",
   
-      "xsd": "https://www.w3.org/2001/XMLSchema#",
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
   
       "OpenBadgeCredential": {
         "@id": "https://purl.imsglobal.org/spec/vc/ob/vocab.html#OpenBadgeCredential"

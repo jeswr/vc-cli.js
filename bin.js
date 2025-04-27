@@ -14,7 +14,6 @@ import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-
 import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
 import * as vc from '@digitalbazaar/vc';
 import { documentLoader as defaultDocumentLoader } from './documentLoader.js';
-import jsonld from 'jsonld';
 import { write } from '@jeswr/pretty-turtle';
 import dereference from 'rdf-dereference-store';
 import { DataFactory } from 'n3';
@@ -682,21 +681,25 @@ program
         },
         localFiles: true
       });
- 
+
+      const prefixes = {
+        ...data.prefixes,
+        schema: 'https://schema.org/',
+        vdl: 'https://w3id.org/vdl#',
+        ob: 'https://purl.imsglobal.org/spec/vc/ob/vocab.html#',
+        citizenship: 'https://w3id.org/citizenship#',
+        credentials: 'https://www.w3.org/2018/credentials#',
+        ex: 'https://example.org/',
+        exg: 'https://example.gov/',
+        gov: 'https://example.gov/test#',
+        xsd: 'http://www.w3.org/2001/XMLSchema#',
+        status: 'https://example.gov/status/',
+        lic: 'https://example.gov/drivers-license/'
+      };
+
       // Serialize to Turtle
       const turtle = await write([...data.store.match(null, null, null, DataFactory.defaultGraph())].filter(quad => !quad.predicate.equals(DataFactory.namedNode('https://w3id.org/security#proof'))), {
-        prefixes: {
-          ...data.prefixes,
-          schema: 'https://schema.org/',
-          vdl: 'https://w3id.org/vdl#',
-          ob: 'https://purl.imsglobal.org/spec/vc/ob/vocab.html#',
-          citizenship: 'https://w3id.org/citizenship#',
-          credentials: 'https://www.w3.org/2018/credentials#',
-          ex: 'https://example.org/',
-          exg: 'https://example.gov/',
-          gov: 'https://example.gov/test#',
-          xsd: 'http://www.w3.org/2001/XMLSchema#'
-        }
+        prefixes
       });
 
       // Write to output file
