@@ -18,9 +18,9 @@
     "additionalName": "JACOB",
     "familyName": "DOE",
     "gender": "Male",
-    "residentSince": "2015-01-01",
+    "residentSince": "2015-01-01T00:00:00Z",
     "birthCountry": "Bahamas",
-    "birthDate": "1958-07-17",
+    "birthDate": "1958-07-17T00:00:00Z",
     "employmentAuthorizationDocument": {
       "type": "EmploymentAuthorizationDocument",
       "identifier": "83627465",
