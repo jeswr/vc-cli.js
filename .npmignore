@@ -1,5 +1,14 @@
-clean.sh
-test.sh
+*.sh
+*.ttl
+*.jsonld
 residence.jsonld
 privatekeys.jsonld
 alice.jsonld
+node_modules
+generated/
+alice.jsonld
+privatekeys.jsonld
+signed-residence.jsonld
+bbs-signed-residence.jsonld
+derived-residence.jsonld
+generate-distributed/

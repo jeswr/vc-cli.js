@@ -7,7 +7,7 @@
     "vc-cli": "bin.js"
   },
   "scripts": {
-    "test": "bash ./test.sh && bash ./clean.sh",
+    "test": "bash ./test.sh && bash ./clean.sh && bash ./test-pkg.sh",
     "validate-jsonld": "node ./validate-jsonld.js"
   },
   "repository": {

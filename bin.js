@@ -400,10 +400,10 @@ program
       ];
 
       const documents = options.documents ? options.documents.split(',') : [
-        './mocks/residence.jsonld',
-        './mocks/barcode.jsonld',
-        './mocks/employable.jsonld',
-        './mocks/education.jsonld'
+        path.join(__dirname, 'mocks/residence.jsonld'),
+        path.join(__dirname, 'mocks/barcode.jsonld'),
+        path.join(__dirname, 'mocks/employable.jsonld'),
+        path.join(__dirname, 'mocks/education.jsonld')
       ];
 
       const signatures = options.signatures ? options.signatures.split(',') : ['bbs', 'ed25519'];

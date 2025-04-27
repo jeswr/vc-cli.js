@@ -1,13 +1,7 @@
 node_modules
 generated/
-alice.jsonld
-privatekeys.jsonld
-signed-residence.jsonld
-bbs-signed-residence.jsonld
-derived-residence.jsonld
 generate-distributed/
-generated-distributed.ttl
-generated.ttl
-generated-dereferenced.ttl
-generated-distributed-dereferenced.ttl
-generated-distributed-collected-dereferenced.ttl
+test-pkg/
+*.sh
+*.ttl
+*.jsonld
