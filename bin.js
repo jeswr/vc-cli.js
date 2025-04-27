@@ -191,11 +191,20 @@ program
         }, { algorithm });
 
         const date = new Date().toISOString();
+
+        const entryPointers = ['/issuer'];
+        if (document.validFrom) {
+          entryPointers.push('/validFrom');
+        }
+        if (document.validUntil) {
+          entryPointers.push('/validUntil');
+        }
+
         const suite = new DataIntegrityProof({
           signer: keyPair.signer(),
           date,
           cryptosuite: createSignCryptosuite({
-            mandatoryPointers: ['/issuer']
+            mandatoryPointers: entryPointers
           })
         });
 
