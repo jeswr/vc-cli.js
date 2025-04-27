@@ -120,6 +120,7 @@ vc-cli generate [options]
 - `--no-derive`: Skip creating derived proofs for BBS signatures
 - `-o, --output-dir <path>`: Output directory for generated files [default: "./generated"]
 - `--distribute`: Distribute documents across CIDs instead of having each CID sign all documents
+- `--collect`: Collect all generated files into a single Turtle file named `collected.ttl` in the output directory
 
 #### Example:
 
@@ -135,6 +136,12 @@ vc-cli generate -s bbs --no-derive
 
 # Generate with documents distributed across CIDs
 vc-cli generate --distribute
+
+# Generate and collect all files into a single Turtle file
+vc-cli generate --collect
+
+# Generate to a custom directory and collect files
+vc-cli generate -o ./my-output --collect
 ```
 
 The generate command will:
@@ -143,6 +150,33 @@ The generate command will:
 3. Create derived proofs for BBS signatures (unless disabled)
 4. Save all generated files in the specified output directory
 5. Verify all generated documents
+6. If `--collect` is specified, collect all generated files into a single Turtle file named `collected.ttl` in the output directory
+
+### Collect
+
+Collect multiple JSON-LD documents into a single Turtle file, excluding proofs.
+
+```bash
+vc-cli collect -d <directory-path> -o <output-path>
+```
+
+#### Options:
+
+- `-d, --directory <path>`: Directory containing JSON-LD documents (required)
+- `-o, --output <path>`: Output path for Turtle file (must end with .ttl) (required)
+
+#### Example:
+
+```bash
+# Collect all JSON-LD documents from a directory into a single Turtle file
+vc-cli collect -d ./generated -o output.ttl
+```
+
+The collect command will:
+1. Read all JSON-LD files from the specified directory
+2. Combine them into a single Turtle file
+3. Exclude any proof-related triples
+4. Save the result to the specified output file
 
 ## Error Handling
 

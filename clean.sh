@@ -9,3 +9,4 @@ rm -rf generated.ttl
 rm -rf generated-distributed.ttl
 rm -rf generated-dereferenced.ttl
 rm -rf generated-distributed-dereferenced.ttl
+rm -rf generated-distributed-collected-dereferenced.ttl

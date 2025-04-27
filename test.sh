@@ -29,10 +29,11 @@ node bin.js verify-credential -c ./alice.jsonld -d ./derived-residence.jsonld
 
 node bin.js generate 
 
-node bin.js generate  -o ./generate-distributed --distribute
+node bin.js generate  -o ./generate-distributed --distribute --collect
 
-node bin.js collate -d ./generated -o generated.ttl
-node bin.js collate -d ./generate-distributed -o generated-distributed.ttl
+node bin.js collect -d ./generated -o generated.ttl
+node bin.js collect -d ./generate-distributed -o generated-distributed.ttl
 
 npx rdf-dereference generated.ttl > generated-dereferenced.ttl
 npx rdf-dereference generated-distributed.ttl > generated-distributed-dereferenced.ttl
+npx rdf-dereference ./generate-distributed/collected.ttl > generated-distributed-collected-dereferenced.ttl

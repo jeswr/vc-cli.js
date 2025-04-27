@@ -388,6 +388,7 @@ program
   .option('--no-derive', 'Skip creating derived proofs for BBS signatures')
   .option('-o, --output-dir <path>', 'Output directory for generated files [default: "./generated"]')
   .option('--distribute', 'Distribute documents across CIDs instead of having each CID sign all documents')
+  .option('--collect', 'Collect all generated files into a single Turtle file')
   .action(async (options) => {
     try {
       // Parse options with defaults
@@ -626,6 +627,14 @@ program
       console.log('- BBS Signatures:', bbsDir);
       console.log('- Ed25519 Signatures:', ed25519Dir);
       console.log('- Derived Credentials:', derivedDir);
+
+      // If --collect flag is set, collect all files into a single Turtle file
+      if (options.collect) {
+        console.log('\n=== Collecting Generated Files ===');
+        const outputFile = path.join(baseOutputDir, 'collected.ttl');
+        await program.parseAsync(['', '', 'collect', '-d', baseOutputDir, '-o', outputFile]);
+        console.log(`✓ All files collected into: ${outputFile}`);
+      }
     } catch (error) {
       console.error('Error:', error.message);
       process.exit(1);
@@ -633,8 +642,8 @@ program
   });
 
 program
-  .command('collate')
-  .description('Collate JSON-LD documents into a single Turtle file, excluding proofs')
+  .command('collect')
+  .description('Collect JSON-LD documents into a single Turtle file, excluding proofs')
   .requiredOption('-d, --directory <path>', 'Directory containing JSON-LD documents')
   .requiredOption('-o, --output <path>', 'Output path for Turtle file (must end with .ttl)')
   .action(async (options) => {
@@ -692,7 +701,7 @@ program
 
       // Write to output file
       await fs.writeFile(options.output, turtle);
-      console.log(`Successfully collated ${jsonldFiles.length} documents into ${options.output}`);
+      console.log(`Successfully collected ${jsonldFiles.length} documents into ${options.output}`);
     } catch (error) {
       console.error('Error:', error.message);
       process.exit(1);
