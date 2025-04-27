@@ -5,3 +5,7 @@ rm -rf bbs-signed-residence.jsonld
 rm -rf derived-residence.jsonld
 rm -rf ./generated
 rm -rf ./generate-distributed
+rm -rf generated.ttl
+rm -rf generated-distributed.ttl
+rm -rf generated-dereferenced.ttl
+rm -rf generated-distributed-dereferenced.ttl

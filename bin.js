@@ -14,6 +14,10 @@ import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-
 import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
 import * as vc from '@digitalbazaar/vc';
 import { documentLoader as defaultDocumentLoader } from './documentLoader.js';
+import jsonld from 'jsonld';
+import { write } from '@jeswr/pretty-turtle';
+import dereference from 'rdf-dereference-store';
+import { DataFactory } from 'n3';
 
 const {
   createSignCryptosuite,
@@ -622,6 +626,73 @@ program
       console.log('- BBS Signatures:', bbsDir);
       console.log('- Ed25519 Signatures:', ed25519Dir);
       console.log('- Derived Credentials:', derivedDir);
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('collate')
+  .description('Collate JSON-LD documents into a single Turtle file, excluding proofs')
+  .requiredOption('-d, --directory <path>', 'Directory containing JSON-LD documents')
+  .requiredOption('-o, --output <path>', 'Output path for Turtle file (must end with .ttl)')
+  .action(async (options) => {
+    try {
+      // Validate output file extension
+      if (!options.output.endsWith('.ttl')) {
+        throw new Error('Output file must have .ttl extension');
+      }
+
+      // Read all files in the directory
+      const files = await fs.readdir(options.directory, { recursive: true });
+      const jsonldFiles = files.filter(file => file.endsWith('.jsonld'))
+        .map(file => path.join(options.directory, file))
+        .filter(file => !file.includes('-cid.jsonld'));
+
+
+
+      if (jsonldFiles.length === 0) {
+        throw new Error('No JSON-LD files found in the specified directory');
+      }
+
+      const data = await dereference.default(jsonldFiles, {
+        fetch: async (url) => {
+          let res = await defaultDocumentLoader(url);
+
+          if (!('@context' in res) && 'document' in res) {
+            res = res.document;
+          }
+
+          const str = JSON.stringify(res, null, 2);
+          return new Response(str, {
+            headers: {
+              'Content-Type': 'application/ld+json'
+            }
+          });
+        },
+        localFiles: true
+      });
+ 
+      // Serialize to Turtle
+      const turtle = await write([...data.store.match(null, null, null, DataFactory.defaultGraph())].filter(quad => !quad.predicate.equals(DataFactory.namedNode('https://w3id.org/security#proof'))), {
+        prefixes: {
+          ...data.prefixes,
+          schema: 'https://schema.org/',
+          vdl: 'https://w3id.org/vdl#',
+          ob: 'https://purl.imsglobal.org/spec/vc/ob/vocab.html#',
+          citizenship: 'https://w3id.org/citizenship#',
+          credentials: 'https://www.w3.org/2018/credentials#',
+          ex: 'https://example.org/',
+          exg: 'https://example.gov/',
+          gov: 'https://example.gov/test#',
+          xsd: 'http://www.w3.org/2001/XMLSchema#'
+        }
+      });
+
+      // Write to output file
+      await fs.writeFile(options.output, turtle);
+      console.log(`Successfully collated ${jsonldFiles.length} documents into ${options.output}`);
     } catch (error) {
       console.error('Error:', error.message);
       process.exit(1);
