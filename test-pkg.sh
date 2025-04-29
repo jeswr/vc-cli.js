@@ -5,4 +5,4 @@ npm install ..
 
 npx vc-cli generate -o ./generated --distribute --collect
 cd ..
-# rm -rf ./test-pkg/
+rm -rf ./test-pkg/
