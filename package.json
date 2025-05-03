@@ -8,6 +8,7 @@
     "cid.js",
     "documentLoader.js",
     "mocks/**/*",
+    "lib/**/*",
     ".cache/**/*",
     "index.js"
   ],

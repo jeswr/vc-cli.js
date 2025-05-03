@@ -12,6 +12,7 @@ import jsigs from 'jsonld-signatures';
 import { URL } from 'url';
 import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
 import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
+import { _createVerifyData } from './lib/verify.js';
 import * as vc from '@digitalbazaar/vc';
 import { documentLoader as defaultDocumentLoader } from './documentLoader.js';
 import { write } from '@jeswr/pretty-turtle';
@@ -22,7 +23,7 @@ import { randomUUID } from 'crypto';
 const {
   createSignCryptosuite,
   createVerifyCryptosuite,
-  createDiscloseCryptosuite
+  createDiscloseCryptosuite,
 } = bbs2023Cryptosuite;
 const { purposes: { AssertionProofPurpose } } = jsigs;
 
@@ -362,6 +363,97 @@ program
   });
 
 program
+  .command('bbs-verify-preprocess')
+  .description('Preprocess BBS verification data from derived credentials')
+  .requiredOption('-d, --document <path>', 'Path to derived BBS document or directory containing derived BBS documents')
+  .requiredOption('-o, --output <path>', 'Output path for preprocessed data (file or directory)')
+  .action(async (options) => {
+    try {
+      // Check if input is a directory
+      const stats = await fs.stat(options.document);
+      const isDirectory = stats.isDirectory();
+
+      // Get list of files to process
+      const filesToProcess = isDirectory ? 
+        (await fs.readdir(options.document))
+          .filter(file => file.endsWith('.jsonld'))
+          .map(file => path.join(options.document, file)) :
+        [options.document];
+
+      if (filesToProcess.length === 0) {
+        throw new Error('No JSON-LD files found to process');
+      }
+
+      // Process each file
+      for (const filePath of filesToProcess) {
+        try {
+          // Read the derived document
+          const documentContent = await fs.readFile(filePath, 'utf8');
+          const document = JSON.parse(documentContent);
+
+          // Create a custom document loader
+          const documentLoader = async (url) => {
+            const sanitizedUrl = sanitizeUrl(url);
+            return defaultDocumentLoader(sanitizedUrl);
+          };
+
+          // Get the verification data
+          const verifyData = await _createVerifyData({
+            document,
+            documentLoader,
+          });
+
+          // Format the output data
+          const outputData = {
+            verifyData: {
+              ...verifyData,
+              bbsProof: Buffer.from(verifyData.bbsProof).toString('base64'),
+              proofHash: Buffer.from(verifyData.proofHash).toString('base64'),
+              mandatoryHash: Buffer.from(verifyData.mandatoryHash).toString('base64'),
+            }
+          };
+
+          // Handle output path
+          let outputPath = options.output;
+          try {
+            const outputStats = await fs.stat(outputPath);
+            if (outputStats.isDirectory()) {
+              // If it's a directory, create a file named after the input document
+              const docName = path.basename(filePath, '.jsonld');
+              outputPath = path.join(outputPath, `${docName}-preprocessed.json`);
+            } else if (filesToProcess.length > 1) {
+              // If multiple files but output is a file, throw error
+              throw new Error('Output must be a directory when processing multiple files');
+            }
+          } catch (error) {
+            if (error.code === 'ENOENT') {
+              // If the path doesn't exist, assume it's a file path
+              const dir = path.dirname(outputPath);
+              await fs.mkdir(dir, { recursive: true });
+            } else {
+              throw error;
+            }
+          }
+
+          // Write the preprocessed data to the output file
+          await fs.writeFile(outputPath, JSON.stringify(outputData, null, 2));
+          console.log(`Preprocessed data saved to: ${outputPath}`);
+        } catch (error) {
+          console.error(`Error processing ${filePath}:`, error.message);
+          if (filesToProcess.length === 1) {
+            // If only processing one file, exit with error
+            process.exit(1);
+          }
+          // Otherwise continue with next file
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
+program
   .command('derive-proof')
   .description('Create a derived BBS proof from a signed input BBS document')
   .requiredOption('-d, --document <path>', 'Path to signed BBS document')
@@ -410,6 +502,7 @@ program
   .option('-d, --documents <paths>', 'Comma-separated list of credential document paths to sign [default: all mock credentials]')
   .option('-s, --signatures <types>', 'Comma-separated list of signature types to use (bbs,ed25519) [default: "bbs,ed25519"]')
   .option('--no-derive', 'Skip creating derived proofs for BBS signatures')
+  .option('--no-preprocess', 'Skip preprocessing derived proofs')
   .option('-o, --output-dir <path>', 'Output directory for generated files [default: "./generated"]')
   .option('--distribute', 'Distribute documents across CIDs instead of having each CID sign all documents')
   .option('--collect', 'Collect all generated files into a single Turtle file')
@@ -433,6 +526,7 @@ program
 
       const signatures = options.signatures ? options.signatures.split(',') : ['bbs', 'ed25519'];
       const shouldDerive = options.derive !== false;
+      const shouldPreprocess = options.preprocess !== false;
       const baseOutputDir = options.outputDir || './generated';
       const distribute = options.distribute || false;
       const subjectId = options.subjectId || `did:example:${randomUUID()}`;
@@ -443,6 +537,7 @@ program
       console.log(`Documents to sign: ${documents.join(', ')}`);
       console.log(`Signature types: ${signatures.join(', ')}`);
       console.log(`Derive proofs: ${shouldDerive ? 'Yes' : 'No'}`);
+      console.log(`Preprocess derived proofs: ${shouldPreprocess ? 'Yes' : 'No'}`);
       console.log(`Distribute documents: ${distribute ? 'Yes' : 'No'}`);
       console.log(`Credential Subject ID: ${subjectId}\n`);
 
@@ -451,6 +546,7 @@ program
       const bbsDir = path.join(baseOutputDir, 'bbs');
       const ed25519Dir = path.join(baseOutputDir, 'ed25519');
       const derivedDir = path.join(baseOutputDir, 'derived');
+      const preprocessedDir = path.join(baseOutputDir, 'derived-preprocessed');
       const keysFile = path.join(baseOutputDir, 'privateKeys.json');
 
       // Create output directories
@@ -460,7 +556,8 @@ program
           fs.mkdir(cidsDir, { recursive: true }),
           fs.mkdir(bbsDir, { recursive: true }),
           fs.mkdir(ed25519Dir, { recursive: true }),
-          fs.mkdir(derivedDir, { recursive: true })
+          fs.mkdir(derivedDir, { recursive: true }),
+          shouldPreprocess && fs.mkdir(preprocessedDir, { recursive: true })
         ]);
         console.log('✓ Output directories created successfully\n');
       } catch (error) {
@@ -605,6 +702,16 @@ program
               '-o', outputFile
             ]);
             console.log(`✓ Derived proof saved to: ${outputFile}`);
+
+            // Preprocess the derived proof if enabled
+            if (shouldPreprocess) {
+              console.log(`Preprocessing derived proof: ${docName}`);
+              await program.parseAsync([
+                '', '', 'bbs-verify-preprocess',
+                '-d', outputFile,
+                '-o', preprocessedDir
+              ]);
+            }
           } catch (error) {
             throw new Error(`Failed to derive proof for ${file}: ${error.message}`);
           }
@@ -657,6 +764,9 @@ program
       console.log('- BBS Signatures:', bbsDir);
       console.log('- Ed25519 Signatures:', ed25519Dir);
       console.log('- Derived Credentials:', derivedDir);
+      if (shouldPreprocess) {
+        console.log('- Preprocessed Derived Credentials:', preprocessedDir);
+      }
 
       // If --collect flag is set, collect all files into a single Turtle file
       if (options.collect) {

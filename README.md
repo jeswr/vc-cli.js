@@ -124,6 +124,7 @@ vc-cli generate [options]
 - `-d, --documents <paths>`: Comma-separated list of credential document paths to sign [default: all mock credentials]
 - `-s, --signatures <types>`: Comma-separated list of signature types to use (bbs,ed25519) [default: "bbs,ed25519"]
 - `--no-derive`: Skip creating derived proofs for BBS signatures
+- `--no-preprocess`: Skip preprocessing derived proofs (enabled by default)
 - `-o, --output-dir <path>`: Output directory for generated files [default: "./generated"]
 - `--distribute`: Distribute documents across CIDs instead of having each CID sign all documents
 - `--collect`: Collect all generated files into a single Turtle file named `collected.ttl` in the output directory
@@ -152,15 +153,30 @@ vc-cli generate -o ./my-output --collect
 
 # Generate with a specific credential subject ID
 vc-cli generate --subject-id "did:example:123"
+
+# Generate without preprocessing derived proofs
+vc-cli generate --no-preprocess
 ```
 
 The generate command will:
 1. Create CIDs for each specified controller DID
 2. Sign each document with each CID using the specified signature types
 3. Create derived proofs for BBS signatures (unless disabled)
-4. Save all generated files in the specified output directory
-5. Verify all generated documents
-6. If `--collect` is specified, collect all generated files into a single Turtle file named `collected.ttl` in the output directory
+4. Preprocess derived proofs (unless disabled with --no-preprocess)
+5. Save all generated files in the specified output directory
+6. Verify all generated documents
+7. If `--collect` is specified, collect all generated files into a single Turtle file named `collected.ttl` in the output directory
+
+The output directory structure will be:
+```
+generated/
+├── cids/              # CID documents
+├── bbs/              # BBS signed credentials
+├── ed25519/          # Ed25519 signed credentials
+├── derived/          # Derived BBS proofs
+├── derived-preprocessed/  # Preprocessed verification data for derived proofs
+└── privateKeys.json  # Private keys for all CIDs
+```
 
 ### Collect
 
