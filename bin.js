@@ -411,7 +411,8 @@ program
               proofHash: Buffer.from(verifyData.proofHash).toString('base64'),
               mandatoryHash: Buffer.from(verifyData.mandatoryHash).toString('base64'),
             },
-            verificationMethod: method
+            verificationMethod: method,
+            proof: document.proof
           };
 
           // Handle output path
