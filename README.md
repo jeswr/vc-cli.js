@@ -110,6 +110,54 @@ vc-cli derive-proof -d signed-credential.json -r '/credentialSubject/givenName,/
 
 The derived credential can be verified using the same verification process as the original credential.
 
+### BBS Verify Preprocess
+
+Preprocess BBS verification data from derived credentials for efficient verification.
+
+```bash
+vc-cli bbs-verify-preprocess -d <document-path> -c <cid-path> -o <output-path>
+```
+
+#### Options:
+
+- `-d, --document <path>`: Path to derived BBS document or directory containing derived BBS documents (required)
+- `-c, --cid <path>`: Path to CID document (required)
+- `-o, --output <path>`: Output path for preprocessed data (file or directory) (required)
+
+#### Example:
+
+```bash
+# Preprocess a single derived BBS document
+vc-cli bbs-verify-preprocess -d derived-credential.json -c cid.json -o preprocessed.json
+
+# Preprocess all derived BBS documents in a directory
+vc-cli bbs-verify-preprocess -d ./derived -c cid.json -o ./preprocessed
+```
+
+### Ed25519 Verify Preprocess
+
+Preprocess Ed25519 verification data from signed credentials for efficient verification.
+
+```bash
+vc-cli ed25519-verify-preprocess -d <document-path> -c <cid-path> -o <output-path>
+```
+
+#### Options:
+
+- `-d, --document <path>`: Path to signed Ed25519 document or directory containing signed Ed25519 documents (required)
+- `-c, --cid <path>`: Path to CID document (required)
+- `-o, --output <path>`: Output path for preprocessed data (file or directory) (required)
+
+#### Example:
+
+```bash
+# Preprocess a single Ed25519 document
+vc-cli ed25519-verify-preprocess -d signed-credential.json -c cid.json -o preprocessed.json
+
+# Preprocess all Ed25519 documents in a directory
+vc-cli ed25519-verify-preprocess -d ./ed25519 -c cid.json -o ./preprocessed
+```
+
 ### Generate
 
 Generate CIDs, sign credentials, and create derived proofs in a batch process.
@@ -174,7 +222,8 @@ generated/
 ├── bbs/              # BBS signed credentials
 ├── ed25519/          # Ed25519 signed credentials
 ├── derived/          # Derived BBS proofs
-├── derived-preprocessed/  # Preprocessed verification data for derived proofs
+├── derived-preprocessed/  # Preprocessed verification data for derived BBS proofs
+├── ed25519-preprocessed/ # Preprocessed verification data for Ed25519 credentials
 └── privateKeys.json  # Private keys for all CIDs
 ```
 

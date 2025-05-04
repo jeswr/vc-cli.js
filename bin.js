@@ -18,7 +18,13 @@ import { documentLoader as defaultDocumentLoader } from './documentLoader.js';
 import { write } from '@jeswr/pretty-turtle';
 import dereference from 'rdf-dereference-store';
 import { DataFactory } from 'n3';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
+
+async function sha256digest({string}) {
+  return new Uint8Array(
+    createHash('sha256').update(string).digest()
+  );
+}
 
 const {
   createSignCryptosuite,
@@ -315,6 +321,18 @@ program
           verificationMethod: verificationMethod.id
         });
 
+        const canonizedDocument = await suite.canonize({ ...document, proof: null }, {documentLoader});
+        const canonizedProof = await suite.canonizeProof(document.proof, {document, documentLoader});
+
+        const proofHash = await sha256digest({string: canonizedProof});
+        const docHash = await sha256digest({string: canonizedDocument});
+
+        const verifyData = {
+          proofHash: Buffer.from(proofHash).toString('base64'),
+          docHash: Buffer.from(docHash).toString('base64'),
+          canonicalProof: canonizedProof,
+          canonicalDocument: canonizedDocument
+        }
 
         // Verify the credential
         const result = await vc.verifyCredential({
@@ -456,6 +474,108 @@ program
   });
 
 program
+  .command('ed25519-verify-preprocess')
+  .description('Preprocess Ed25519 verification data from signed credentials')
+  .requiredOption('-d, --document <path>', 'Path to signed Ed25519 document or directory containing signed Ed25519 documents')
+  .requiredOption('-c, --cid <path>', 'Path to CID document')
+  .requiredOption('-o, --output <path>', 'Output path for preprocessed data (file or directory)')
+  .action(async (options) => {
+    try {
+      // Check if input is a directory
+      const stats = await fs.stat(options.document);
+      const isDirectory = stats.isDirectory();
+
+      // Get list of files to process
+      const filesToProcess = isDirectory ? 
+        (await fs.readdir(options.document))
+          .filter(file => file.endsWith('.jsonld'))
+          .map(file => path.join(options.document, file)) :
+        [options.document];
+
+      if (filesToProcess.length === 0) {
+        throw new Error('No JSON-LD files found to process');
+      }
+
+      // Process each file
+      for (const filePath of filesToProcess) {
+        try {
+          // Read the signed document
+          const documentContent = await fs.readFile(filePath, 'utf8');
+          const document = JSON.parse(documentContent);
+
+          const cid = JSON.parse(await fs.readFile(options.cid, 'utf8'));
+          const verificationMethod = getVerificationMethod(cid, document);
+
+          // Create the Ed25519 suite
+          const keyPair = await Ed25519VerificationKey2020.from({
+            ...verificationMethod,
+            controller: document.issuer.id
+          });
+          const suite = new Ed25519Signature2020({
+            key: keyPair,
+            verificationMethod: verificationMethod.id
+          });
+
+          // Get the verification data
+          const canonizedDocument = await suite.canonize({ ...document, proof: null }, {documentLoader: cidDocumentLoader(cid)});
+          const canonizedProof = await suite.canonizeProof(document.proof, {document, documentLoader: cidDocumentLoader(cid)});
+
+          const proofHash = await sha256digest({string: canonizedProof});
+          const docHash = await sha256digest({string: canonizedDocument});
+
+          // Format the output data
+          const outputData = {
+            verifyData: {
+              proofHash: Buffer.from(proofHash).toString('base64'),
+              docHash: Buffer.from(docHash).toString('base64'),
+              canonicalProof: canonizedProof,
+              canonicalDocument: canonizedDocument
+            },
+            verificationMethod: verificationMethod,
+            proof: document.proof
+          };
+
+          // Handle output path
+          let outputPath = options.output;
+          try {
+            const outputStats = await fs.stat(outputPath);
+            if (outputStats.isDirectory()) {
+              // If it's a directory, create a file named after the input document
+              const docName = path.basename(filePath, '.jsonld');
+              outputPath = path.join(outputPath, `${docName}-preprocessed.json`);
+            } else if (filesToProcess.length > 1) {
+              // If multiple files but output is a file, throw error
+              throw new Error('Output must be a directory when processing multiple files');
+            }
+          } catch (error) {
+            if (error.code === 'ENOENT') {
+              // If the path doesn't exist, assume it's a file path
+              const dir = path.dirname(outputPath);
+              await fs.mkdir(dir, { recursive: true });
+            } else {
+              throw error;
+            }
+          }
+
+          // Write the preprocessed data to the output file
+          await fs.writeFile(outputPath, JSON.stringify(outputData, null, 2));
+          console.log(`Preprocessed data saved to: ${outputPath}`);
+        } catch (error) {
+          console.error(`Error processing ${filePath}:`, error.message);
+          if (filesToProcess.length === 1) {
+            // If only processing one file, exit with error
+            process.exit(1);
+          }
+          // Otherwise continue with next file
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
+program
   .command('derive-proof')
   .description('Create a derived BBS proof from a signed input BBS document')
   .requiredOption('-d, --document <path>', 'Path to signed BBS document')
@@ -549,6 +669,7 @@ program
       const ed25519Dir = path.join(baseOutputDir, 'ed25519');
       const derivedDir = path.join(baseOutputDir, 'derived');
       const preprocessedDir = path.join(baseOutputDir, 'derived-preprocessed');
+      const ed25519PreprocessedDir = path.join(baseOutputDir, 'ed25519-preprocessed');
       const keysFile = path.join(baseOutputDir, 'privateKeys.json');
 
       // Create output directories
@@ -559,7 +680,8 @@ program
           fs.mkdir(bbsDir, { recursive: true }),
           fs.mkdir(ed25519Dir, { recursive: true }),
           fs.mkdir(derivedDir, { recursive: true }),
-          shouldPreprocess && fs.mkdir(preprocessedDir, { recursive: true })
+          shouldPreprocess && fs.mkdir(preprocessedDir, { recursive: true }),
+          shouldPreprocess && fs.mkdir(ed25519PreprocessedDir, { recursive: true })
         ]);
         console.log('✓ Output directories created successfully\n');
       } catch (error) {
@@ -740,6 +862,17 @@ program
           console.log(`\nVerifying: ${file}`);
           await program.parseAsync(['', '', 'verify-credential', '-c', cidFile, '-d', signedFile]);
           console.log('✓ Verification successful');
+
+          // Preprocess Ed25519 documents if enabled
+          if (shouldPreprocess) {
+            console.log(`Preprocessing Ed25519 document: ${file}`);
+            await program.parseAsync([
+              '', '', 'ed25519-verify-preprocess',
+              '-d', signedFile,
+              '-c', cidFile,
+              '-o', ed25519PreprocessedDir
+            ]);
+          }
         } catch (error) {
           throw new Error(`Failed to verify Ed25519 document ${file}: ${error.message}`);
         }
@@ -772,6 +905,7 @@ program
       console.log('- Derived Credentials:', derivedDir);
       if (shouldPreprocess) {
         console.log('- Preprocessed Derived Credentials:', preprocessedDir);
+        console.log('- Preprocessed Ed25519 Credentials:', ed25519PreprocessedDir);
       }
 
       // If --collect flag is set, collect all files into a single Turtle file
