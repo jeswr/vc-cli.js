@@ -26,6 +26,13 @@ async function sha256digest({string}) {
   );
 }
 
+const concat = (b1, b2) => {
+  const rval = new Uint8Array(b1.length + b2.length);
+  rval.set(b1, 0);
+  rval.set(b2, b1.length);
+  return rval;
+}
+
 const {
   createSignCryptosuite,
   createVerifyCryptosuite,
@@ -509,6 +516,16 @@ program
 
           const proofHash = await sha256digest({string: canonizedProof});
           const docHash = await sha256digest({string: canonizedDocument});
+
+          const verified = await suite.verifySignature({
+            verifyData: concat(proofHash, docHash),
+            proof: document.proof,
+            verificationMethod: verificationMethod,
+          });
+
+          if (!verified) {
+            throw new Error('Signature verification failed');
+          }
 
           // Format the output data
           const outputData = {
