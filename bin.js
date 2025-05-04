@@ -265,25 +265,10 @@ program
       const document = JSON.parse(documentContent);
 
       // Create a custom document loader that includes the CID document
-      const documentLoader = async (url) => {
-        url = sanitizeUrl(url);
-        // If the URL matches the CID document's ID, return the CID document
-        if (url === cid.id) {
-          return {
-            contextUrl: null,
-            document: cid,
-            documentUrl: url
-          };
-        }
-        // Otherwise use the default document loader
-        return defaultDocumentLoader(url);
-      };
+      const documentLoader = cidDocumentLoader(cid);
 
       // Get the verification method from the CID document
-      const verificationMethod = cid.verificationMethod.find(vm => vm.id === document.proof.verificationMethod);
-      if (!verificationMethod) {
-        throw new Error(`Verification method ${document.proof.verificationMethod} not found in CID document`);
-      }
+      const verificationMethod = getVerificationMethod(cid, document);
 
       let suite;
       let keyPair;
@@ -366,6 +351,7 @@ program
   .command('bbs-verify-preprocess')
   .description('Preprocess BBS verification data from derived credentials')
   .requiredOption('-d, --document <path>', 'Path to derived BBS document or directory containing derived BBS documents')
+  .requiredOption('-c, --cid <path>', 'Path to CID document')
   .requiredOption('-o, --output <path>', 'Output path for preprocessed data (file or directory)')
   .action(async (options) => {
     try {
@@ -391,17 +377,31 @@ program
           const documentContent = await fs.readFile(filePath, 'utf8');
           const document = JSON.parse(documentContent);
 
-          // Create a custom document loader
-          const documentLoader = async (url) => {
-            const sanitizedUrl = sanitizeUrl(url);
-            return defaultDocumentLoader(sanitizedUrl);
-          };
+          const cid = JSON.parse(await fs.readFile(options.cid, 'utf8'));
+          const verificationMethod = getVerificationMethod(cid, document);
 
           // Get the verification data
           const verifyData = await _createVerifyData({
             document,
-            documentLoader,
+            documentLoader: cidDocumentLoader(cid),
           });
+
+        // BBS+ signature
+        const keyPair = await Bls12381Multikey.from({
+          ...verificationMethod,
+          controller: document.issuer.id
+        });
+        const cryptosuite = await createVerifyCryptosuite({
+          mandatoryPointers: ['/issuer']
+        });
+        const suite = new MyDataIntegrityProof({
+          verifier: keyPair.verifier(),
+          cryptosuite,
+        });
+        const method = await suite.getVerificationMethod({
+          proof: document.proof,
+          documentLoader: cidDocumentLoader(cid),
+        });
 
           // Format the output data
           const outputData = {
@@ -410,7 +410,8 @@ program
               bbsProof: Buffer.from(verifyData.bbsProof).toString('base64'),
               proofHash: Buffer.from(verifyData.proofHash).toString('base64'),
               mandatoryHash: Buffer.from(verifyData.mandatoryHash).toString('base64'),
-            }
+            },
+            verificationMethod: method
           };
 
           // Handle output path
@@ -706,9 +707,13 @@ program
             // Preprocess the derived proof if enabled
             if (shouldPreprocess) {
               console.log(`Preprocessing derived proof: ${docName}`);
+
+              const cidFile = cidFiles.find(f => f.includes(docName.split('-')[1]));
+
               await program.parseAsync([
                 '', '', 'bbs-verify-preprocess',
                 '-d', outputFile,
+                '-c', cidFile,
                 '-o', preprocessedDir
               ]);
             }
@@ -854,3 +859,28 @@ program
   });
 
 program.parse(); 
+
+function getVerificationMethod(cid, document) {
+  const verificationMethod = cid.verificationMethod.find(vm => vm.id === document.proof.verificationMethod);
+  if (!verificationMethod) {
+    throw new Error(`Verification method ${document.proof.verificationMethod} not found in CID document`);
+  }
+  return verificationMethod;
+}
+
+function cidDocumentLoader(cid) {
+  return async (url) => {
+    url = sanitizeUrl(url);
+    // If the URL matches the CID document's ID, return the CID document
+    if (url === cid.id) {
+      return {
+        contextUrl: null,
+        document: cid,
+        documentUrl: url
+      };
+    }
+    // Otherwise use the default document loader
+    return defaultDocumentLoader(url);
+  };
+}
+
