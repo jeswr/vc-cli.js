@@ -321,19 +321,6 @@ program
           verificationMethod: verificationMethod.id
         });
 
-        const canonizedDocument = await suite.canonize({ ...document, proof: null }, {documentLoader});
-        const canonizedProof = await suite.canonizeProof(document.proof, {document, documentLoader});
-
-        const proofHash = await sha256digest({string: canonizedProof});
-        const docHash = await sha256digest({string: canonizedDocument});
-
-        const verifyData = {
-          proofHash: Buffer.from(proofHash).toString('base64'),
-          docHash: Buffer.from(docHash).toString('base64'),
-          canonicalProof: canonizedProof,
-          canonicalDocument: canonizedDocument
-        }
-
         // Verify the credential
         const result = await vc.verifyCredential({
           credential: document,
@@ -526,8 +513,8 @@ program
           // Format the output data
           const outputData = {
             verifyData: {
-              proofHash: Buffer.from(proofHash).toString('base64'),
-              docHash: Buffer.from(docHash).toString('base64'),
+              proofHash: Buffer.from(proofHash).toString('hex'),
+              docHash: Buffer.from(docHash).toString('hex'),
               canonicalProof: canonizedProof,
               canonicalDocument: canonizedDocument
             },
