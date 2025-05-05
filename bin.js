@@ -516,9 +516,10 @@ program
 
           const proofHash = await sha256digest({string: canonizedProof});
           const docHash = await sha256digest({string: canonizedDocument});
+          const concatHash = concat(proofHash, docHash);
 
           const verified = await suite.verifySignature({
-            verifyData: concat(proofHash, docHash),
+            verifyData: concatHash,
             proof: document.proof,
             verificationMethod: verificationMethod,
           });
@@ -532,6 +533,7 @@ program
             verifyData: {
               proofHash: Buffer.from(proofHash).toString('hex'),
               docHash: Buffer.from(docHash).toString('hex'),
+              concatHash: Buffer.from(concatHash).toString('hex'),
               canonicalProof: canonizedProof,
               canonicalDocument: canonizedDocument
             },
