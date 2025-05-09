@@ -14,7 +14,7 @@ import dereference from 'rdf-dereference-store';
 import { generateCID } from './cid.js';
 import { createDocumentLoader } from './documentLoader.js';
 import { _createVerifyData } from './lib/verify.js';
-export { documentLoader } from './documentLoader.js';
+export { documentLoader, createDocumentLoader } from './documentLoader.js';
 
 const {
   createSignCryptosuite,
