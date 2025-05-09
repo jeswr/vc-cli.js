@@ -1,22 +1,20 @@
-import { generateCID } from './cid.js';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import * as Bls12381Multikey from '@digitalbazaar/bls12-381-multikey';
 import * as bbs2023Cryptosuite from '@digitalbazaar/bbs-2023-cryptosuite';
+import * as Bls12381Multikey from '@digitalbazaar/bls12-381-multikey';
 import { DataIntegrityProof } from '@digitalbazaar/data-integrity';
-import jsigs from 'jsonld-signatures';
-import { URL } from 'node:url';
-import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
 import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
-import { _createVerifyData } from './lib/verify.js';
+import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
 import * as vc from '@digitalbazaar/vc';
-import { documentLoader as defaultDocumentLoader } from './documentLoader.js';
 import { write } from '@jeswr/pretty-turtle';
-import dereference from 'rdf-dereference-store';
+import jsigs from 'jsonld-signatures';
 import { DataFactory } from 'n3';
-import { randomUUID, createHash } from 'node:crypto';
-import { createDocumentLoader } from './documentLoader.js';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs/promises';
+import { URL } from 'node:url';
+import dereference from 'rdf-dereference-store';
+import { generateCID } from './cid.js';
+import { createDocumentLoader, documentLoader as defaultDocumentLoader } from './documentLoader.js';
+import { _createVerifyData } from './lib/verify.js';
+export { documentLoader } from './documentLoader.js';
 
 const {
   createSignCryptosuite,
