@@ -121,7 +121,8 @@ program
         document,
         keyId: options.keyId,
         credentialId: options.credentialId,
-        subjectId: options.subjectId
+        subjectId: options.subjectId,
+        documentLoaderContent: await getDocumentLoaderContent(options)
       });
 
       // Write the signed credential to the output file
@@ -149,7 +150,7 @@ program
       const documentContent = await fs.readFile(options.document, 'utf8');
       const document = JSON.parse(documentContent);
 
-      const isValid = await verifyCredential({ cid, document });
+      const isValid = await verifyCredential({ cid, document, documentLoaderContent: await getDocumentLoaderContent(options) });
 
       if (isValid) {
         console.log('Credential verified successfully!');
@@ -181,7 +182,8 @@ program
 
       const derivedDocument = await deriveProof({
         document,
-        revealPointers
+        revealPointers,
+        documentLoaderContent: await getDocumentLoaderContent(options)
       });
 
       // Write the derived document to the output file
@@ -230,7 +232,8 @@ program
 
           const preprocessedData = await preprocessBBSVerification({
             document,
-            cid
+            cid,
+            documentLoaderContent: await getDocumentLoaderContent(options)
           });
 
           // Handle output path
@@ -310,7 +313,8 @@ program
 
           const preprocessedData = await preprocessEd25519Verification({
             document,
-            cid
+            cid,
+            documentLoaderContent: await getDocumentLoaderContent(options)
           });
 
           // Handle output path
@@ -564,7 +568,8 @@ program
 
             const derivedDocument = await deriveProof({
               document,
-              revealPointers
+              revealPointers,
+              documentLoaderContent: await getDocumentLoaderContent(options)
             });
 
             await fs.writeFile(outputFile, JSON.stringify(derivedDocument, null, 2));
@@ -580,7 +585,8 @@ program
 
               const preprocessedData = await preprocessBBSVerification({
                 document: derivedDocument,
-                cid
+                cid,
+                documentLoaderContent: await getDocumentLoaderContent(options)
               });
 
               const preprocessedFile = path.join(preprocessedDir, `${docName}-preprocessed.json`);
@@ -612,7 +618,7 @@ program
           const documentContent = await fs.readFile(signedFile, 'utf8');
           const document = JSON.parse(documentContent);
 
-          const isValid = await verifyCredential({ cid, document });
+          const isValid = await verifyCredential({ cid, document, documentLoaderContent: await getDocumentLoaderContent(options) });
           if (!isValid) {
             throw new Error('Verification failed');
           }
@@ -623,7 +629,8 @@ program
             console.log(`Preprocessing Ed25519 document: ${file}`);
             const preprocessedData = await preprocessEd25519Verification({
               document,
-              cid
+              cid,
+              documentLoaderContent: await getDocumentLoaderContent(options)
             });
 
             const preprocessedFile = path.join(ed25519PreprocessedDir, `${file}-preprocessed.json`);
@@ -650,7 +657,7 @@ program
           const documentContent = await fs.readFile(derivedFile, 'utf8');
           const document = JSON.parse(documentContent);
 
-          const isValid = await verifyCredential({ cid, document });
+          const isValid = await verifyCredential({ cid, document, documentLoaderContent: await getDocumentLoaderContent(options) });
           if (!isValid) {
             throw new Error('Verification failed');
           }
@@ -714,7 +721,8 @@ program
 
       await collectDocuments({
         documents: jsonldFiles,
-        outputPath: options.output
+        outputPath: options.output,
+        documentLoaderContent: await getDocumentLoaderContent(options)
       });
 
       console.log(`Successfully collected ${jsonldFiles.length} documents into ${options.output}`);
@@ -725,4 +733,16 @@ program
   });
 
 program.parse();
+
+async function getDocumentLoaderContent(options) {
+  let documentLoaderContent = {};
+  if (options.documentLoaderContent) {
+    try {
+      documentLoaderContent = JSON.parse(await fs.readFile(options.documentLoaderContent, 'utf8'));
+    } catch (error) {
+      console.error('Error:', error.message);
+    }
+  }
+  return documentLoaderContent;
+}
 
