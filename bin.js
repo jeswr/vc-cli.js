@@ -2,14 +2,14 @@
 
 import { program } from 'commander';
 import { generateCID } from './cid.js';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as Bls12381Multikey from '@digitalbazaar/bls12-381-multikey';
 import * as bbs2023Cryptosuite from '@digitalbazaar/bbs-2023-cryptosuite';
 import { DataIntegrityProof } from '@digitalbazaar/data-integrity';
 import jsigs from 'jsonld-signatures';
-import { URL } from 'url';
+import { URL } from 'node:url';
 import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-key-2020';
 import { Ed25519Signature2020 } from '@digitalbazaar/ed25519-signature-2020';
 import { _createVerifyData } from './lib/verify.js';
@@ -18,7 +18,8 @@ import { documentLoader as defaultDocumentLoader } from './documentLoader.js';
 import { write } from '@jeswr/pretty-turtle';
 import dereference from 'rdf-dereference-store';
 import { DataFactory } from 'n3';
-import { randomUUID, createHash } from 'crypto';
+import { randomUUID, createHash } from 'node:crypto';
+import { createDocumentLoader } from './documentLoader.js';
 
 async function sha256digest({string}) {
   return new Uint8Array(
@@ -84,6 +85,7 @@ program
   .option('-k, --keys <path>', 'Path to save private keys JSON file')
   .option('--no-ed25519', 'Exclude Ed25519 signature type')
   .option('--no-bbs', 'Exclude BBS+ signature type')
+  .option('--document-loader-content <path>', 'Path to JSON file containing predefined document loader responses')
   .action(async (options) => {
     try {
       const { cid, privateKeys } = await generateCID(options.controller, {
@@ -149,6 +151,7 @@ program
   .requiredOption('-o, --output <path>', 'Output path for signed credential')
   .option('--credential-id <id>', 'ID for the credential (optional)')
   .option('--subject-id <id>', 'ID for the credential subject (optional)')
+  .option('--document-loader-content <path>', 'Path to JSON file containing predefined document loader responses')
   .action(async (options) => {
     try {
       // Read the CID document
@@ -267,6 +270,7 @@ program
   .description('Verify a verifiable credential using a CID document')
   .requiredOption('-c, --cid <path>', 'Path to CID document')
   .requiredOption('-d, --document <path>', 'Path to verifiable credential to verify')
+  .option('--document-loader-content <path>', 'Path to JSON file containing predefined document loader responses')
   .action(async (options) => {
     try {
       // Read the CID document
@@ -278,7 +282,7 @@ program
       const document = JSON.parse(documentContent);
 
       // Create a custom document loader that includes the CID document
-      const documentLoader = cidDocumentLoader(cid);
+      const documentLoader = cidDocumentLoader(cid, options.documentLoaderContent);
 
       // Get the verification method from the CID document
       const verificationMethod = getVerificationMethod(cid, document);
@@ -365,6 +369,7 @@ program
   .requiredOption('-d, --document <path>', 'Path to derived BBS document or directory containing derived BBS documents')
   .requiredOption('-c, --cid <path>', 'Path to CID document')
   .requiredOption('-o, --output <path>', 'Output path for preprocessed data (file or directory)')
+  .option('--document-loader-content <path>', 'Path to JSON file containing predefined document loader responses')
   .action(async (options) => {
     try {
       // Check if input is a directory
@@ -395,7 +400,7 @@ program
           // Get the verification data
           const verifyData = await _createVerifyData({
             document,
-            documentLoader: cidDocumentLoader(cid),
+            documentLoader: cidDocumentLoader(cid, options.documentLoaderContent),
           });
 
         // BBS+ signature
@@ -412,7 +417,7 @@ program
         });
         const method = await suite.getVerificationMethod({
           proof: document.proof,
-          documentLoader: cidDocumentLoader(cid),
+          documentLoader: cidDocumentLoader(cid, options.documentLoaderContent),
         });
 
           // Format the output data
@@ -473,6 +478,7 @@ program
   .requiredOption('-d, --document <path>', 'Path to signed Ed25519 document or directory containing signed Ed25519 documents')
   .requiredOption('-c, --cid <path>', 'Path to CID document')
   .requiredOption('-o, --output <path>', 'Output path for preprocessed data (file or directory)')
+  .option('--document-loader-content <path>', 'Path to JSON file containing predefined document loader responses')
   .action(async (options) => {
     try {
       // Check if input is a directory
@@ -511,8 +517,8 @@ program
           });
 
           // Get the verification data
-          const canonizedDocument = await suite.canonize({ ...document, proof: null }, {documentLoader: cidDocumentLoader(cid)});
-          const canonizedProof = await suite.canonizeProof(document.proof, {document, documentLoader: cidDocumentLoader(cid)});
+          const canonizedDocument = await suite.canonize({ ...document, proof: null }, {documentLoader: cidDocumentLoader(cid, options.documentLoaderContent)});
+          const canonizedProof = await suite.canonizeProof(document.proof, {document, documentLoader: cidDocumentLoader(cid, options.documentLoaderContent)});
 
           const proofHash = await sha256digest({string: canonizedProof});
           const docHash = await sha256digest({string: canonizedDocument});
@@ -587,6 +593,7 @@ program
   .requiredOption('-d, --document <path>', 'Path to signed BBS document')
   .requiredOption('-r, --reveal <pointers>', 'Comma-separated list of JSON pointers to reveal (e.g. /credentialSubject/name,/credentialSubject/age)')
   .requiredOption('-o, --output <path>', 'Output path for derived document')
+  .option('--document-loader-content <path>', 'Path to JSON file containing predefined document loader responses')
   .action(async (options) => {
     try {
       // Read the signed document
@@ -635,6 +642,7 @@ program
   .option('--distribute', 'Distribute documents across CIDs instead of having each CID sign all documents')
   .option('--collect', 'Collect all generated files into a single Turtle file')
   .option('--subject-id <id>', 'ID for the credential subject (optional)')
+  .option('--document-loader-content <path>', 'Path to JSON file containing predefined document loader responses')
   .action(async (options) => {
     try {
       // Parse options with defaults
@@ -932,6 +940,7 @@ program
   .description('Collect JSON-LD documents into a single Turtle file, excluding proofs')
   .requiredOption('-d, --directory <path>', 'Directory containing JSON-LD documents')
   .requiredOption('-o, --output <path>', 'Output path for Turtle file (must end with .ttl)')
+  .option('--document-loader-content <path>', 'Path to JSON file containing predefined document loader responses')
   .action(async (options) => {
     try {
       // Validate output file extension
@@ -1009,19 +1018,20 @@ function getVerificationMethod(cid, document) {
   return verificationMethod;
 }
 
-function cidDocumentLoader(cid) {
+function cidDocumentLoader(cid, documentLoaderContent = {}) {
+  const loader = createDocumentLoader(documentLoaderContent);
   return async (url) => {
-    url = sanitizeUrl(url);
+    const sanitizedUrl = sanitizeUrl(url);
     // If the URL matches the CID document's ID, return the CID document
-    if (url === cid.id) {
+    if (sanitizedUrl === cid.id) {
       return {
         contextUrl: null,
         document: cid,
-        documentUrl: url
+        documentUrl: sanitizedUrl
       };
     }
-    // Otherwise use the default document loader
-    return defaultDocumentLoader(url);
+    // Otherwise use the provided document loader
+    return loader(sanitizedUrl);
   };
 }
 

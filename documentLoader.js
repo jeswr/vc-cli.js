@@ -1,8 +1,8 @@
 import * as vc from '@digitalbazaar/vc';
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Get the directory path of the current file
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,38 +30,52 @@ const tryReadCache = async (cachePath) => {
 };
 
 // Create a custom document loader
-export const documentLoader = async (url) => {
-  // First try reading from script-relative cache
-  const scriptCachePath = getCachePath(url, true);
-  const scriptCacheResult = await tryReadCache(scriptCachePath);
-  if (scriptCacheResult) {
-    return scriptCacheResult;
-  }
+export const createDocumentLoader = (documentLoaderContent = {}) => {
+  return async (url) => {
+    // First check if URL exists in documentLoaderContent
+    if (documentLoaderContent[url]) {
+      return {
+        contextUrl: null,
+        document: documentLoaderContent[url],
+        documentUrl: url
+      };
+    }
 
-  // Then try reading from process-relative cache
-  const processCachePath = getCachePath(url, false);
-  const processCacheResult = await tryReadCache(processCachePath);
-  if (processCacheResult) {
-    return processCacheResult;
-  }
+    // Then try reading from script-relative cache
+    const scriptCachePath = getCachePath(url, true);
+    const scriptCacheResult = await tryReadCache(scriptCachePath);
+    if (scriptCacheResult) {
+      return scriptCacheResult;
+    }
 
-  try {
-    const result = await vc.defaultDocumentLoader(url);
+    // Then try reading from process-relative cache
+    const processCachePath = getCachePath(url, false);
+    const processCacheResult = await tryReadCache(processCachePath);
+    if (processCacheResult) {
+      return processCacheResult;
+    }
+
+    try {
+      const result = await vc.defaultDocumentLoader(url);
+      // Cache the result in process-relative cache
+      await fs.writeFile(processCachePath, JSON.stringify(result));
+      return result;
+    } catch (e) {
+      // Suppress error
+    }
+
+    // If not in cache and default loader failed, fetch and cache
+    const res = {
+      contextUrl: null,
+      document: await (await fetch(url)).json(),
+      documentUrl: url
+    };
+
     // Cache the result in process-relative cache
-    await fs.writeFile(processCachePath, JSON.stringify(result));
-    return result;
-  } catch (e) {
-    // Suppress error
-  }
-
-  // If not in cache and default loader failed, fetch and cache
-  const res = {
-    contextUrl: null,
-    document: await (await fetch(url)).json(),
-    documentUrl: url
+    await fs.writeFile(processCachePath, JSON.stringify(res));
+    return res;
   };
-
-  // Cache the result in process-relative cache
-  await fs.writeFile(processCachePath, JSON.stringify(res));
-  return res;
 };
+
+// Export default document loader for backward compatibility
+export const documentLoader = createDocumentLoader();
