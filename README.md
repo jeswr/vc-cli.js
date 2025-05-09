@@ -1,6 +1,6 @@
-# VC-CLI
+# Verifiable Credentials CLI and API
 
-A command-line utility for generating CIDs (Cryptographic Identifier Documents) and managing Verifiable Credentials.
+This package provides both a CLI and programmatic API for working with Verifiable Credentials, including CID generation, credential signing, verification, and proof derivation.
 
 ## Installation
 
@@ -12,7 +12,165 @@ npm install -g @jeswr/vc-cli
 
 This library is currently in development and is **not intended for production use**. It is provided for testing and educational purposes only. Use at your own risk.
 
-## Commands
+## API Reference
+
+### `generateCIDDocument(controller, options)`
+
+Generates a new CID (Cryptographic Identifier) document.
+
+```javascript
+import { generateCIDDocument } from '@your-package-name';
+
+const { cid, privateKeys } = await generateCIDDocument('did:example:alice', {
+  includeEd25519: true,  // optional, defaults to true
+  includeBBS: true       // optional, defaults to true
+});
+```
+
+#### Parameters:
+- `controller` (string): The DID to use as the controller
+- `options` (object, optional):
+  - `includeEd25519` (boolean): Whether to include Ed25519 signature type
+  - `includeBBS` (boolean): Whether to include BBS+ signature type
+
+#### Returns:
+- `{ cid: Object, privateKeys: Object }`: The generated CID document and private keys
+
+### `signCredential(options)`
+
+Signs a verifiable credential using a CID document and private keys.
+
+```javascript
+import { signCredential } from '@your-package-name';
+
+const signedCredential = await signCredential({
+  cid: cidDocument,
+  privateKeys: privateKeysObject,
+  document: credentialDocument,
+  keyId: 'verification-method-id',
+  credentialId: 'optional-credential-id',
+  subjectId: 'optional-subject-id'
+});
+```
+
+#### Parameters:
+- `options` (object):
+  - `cid` (Object): CID document
+  - `privateKeys` (Object): Private keys object
+  - `document` (Object): Document to sign
+  - `keyId` (string): ID of the key to use for signing
+  - `credentialId` (string, optional): ID for the credential
+  - `subjectId` (string, optional): ID for the credential subject
+
+#### Returns:
+- `Object`: The signed credential
+
+### `verifyCredential(options)`
+
+Verifies a verifiable credential using a CID document.
+
+```javascript
+import { verifyCredential } from '@your-package-name';
+
+const isValid = await verifyCredential({
+  cid: cidDocument,
+  document: signedCredential
+});
+```
+
+#### Parameters:
+- `options` (object):
+  - `cid` (Object): CID document
+  - `document` (Object): Verifiable credential to verify
+
+#### Returns:
+- `boolean`: Whether the verification was successful
+
+### `deriveProof(options)`
+
+Creates a derived BBS proof from a signed input BBS document.
+
+```javascript
+import { deriveProof } from '@your-package-name';
+
+const derivedDocument = await deriveProof({
+  document: signedBBSDocument,
+  revealPointers: ['/credentialSubject/name', '/credentialSubject/age']
+});
+```
+
+#### Parameters:
+- `options` (object):
+  - `document` (Object): Signed BBS document
+  - `revealPointers` (string[]): Array of JSON pointers to reveal
+
+#### Returns:
+- `Object`: The derived document
+
+### `preprocessBBSVerification(options)`
+
+Preprocesses BBS verification data from derived credentials.
+
+```javascript
+import { preprocessBBSVerification } from '@your-package-name';
+
+const preprocessedData = await preprocessBBSVerification({
+  document: derivedBBSDocument,
+  cid: cidDocument
+});
+```
+
+#### Parameters:
+- `options` (object):
+  - `document` (Object): Derived BBS document
+  - `cid` (Object): CID document
+
+#### Returns:
+- `Object`: The preprocessed data containing verification information
+
+### `preprocessEd25519Verification(options)`
+
+Preprocesses Ed25519 verification data from signed credentials.
+
+```javascript
+import { preprocessEd25519Verification } from '@your-package-name';
+
+const preprocessedData = await preprocessEd25519Verification({
+  document: signedEd25519Document,
+  cid: cidDocument
+});
+```
+
+#### Parameters:
+- `options` (object):
+  - `document` (Object): Signed Ed25519 document
+  - `cid` (Object): CID document
+
+#### Returns:
+- `Object`: The preprocessed data containing verification information
+
+### `collectDocuments(options)`
+
+Collects JSON-LD documents into a single Turtle file, excluding proofs.
+
+```javascript
+import { collectDocuments } from '@your-package-name';
+
+await collectDocuments({
+  documents: ['path/to/doc1.jsonld', 'path/to/doc2.jsonld'],
+  outputPath: 'output.ttl'
+});
+```
+
+#### Parameters:
+- `options` (object):
+  - `documents` (string[]): Array of JSON-LD document paths
+  - `outputPath` (string): Output path for Turtle file (must end with .ttl)
+
+#### Returns:
+- `Promise<void>`
+
+## CLI Commands
 
 ### Generate CID
 
