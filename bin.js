@@ -691,7 +691,8 @@ program
             ...(await fs.readdir(ed25519Dir)).map(f => path.join(ed25519Dir, f)),
             ...(await fs.readdir(derivedDir)).map(f => path.join(derivedDir, f))
           ],
-          outputPath: outputFile
+          outputPath: outputFile,
+          documentLoaderContent: await getDocumentLoaderContent(options)
         });
         console.log(`✓ All files collected into: ${outputFile}`);
       }

@@ -394,11 +394,13 @@ export async function preprocessEd25519Verification(options) {
  * @param {Object} options - Options for collection
  * @param {string[]} options.documents - Array of JSON-LD document paths
  * @param {string} options.outputPath - Output path for Turtle file
+ * @param {Object} [options.documentLoaderContent] - Document loader content (optional)
  *  
  * @returns {Promise<void>}
  */
-export async function collectDocuments(options) {
-  const { documents, outputPath } = options;
+export async function collectDocuments(options = {}) {
+  const { documents, outputPath, documentLoaderContent } = options;
+  const documentLoader = createDocumentLoader(documentLoaderContent || {});
 
   if (!outputPath.endsWith('.ttl')) {
     throw new Error('Output file must have .ttl extension');
@@ -406,7 +408,7 @@ export async function collectDocuments(options) {
 
   const data = await dereference.default(documents, {
     fetch: async (url) => {
-      let res = await createDocumentLoader()(url);
+      let res = await documentLoader(url);
 
       if (!('@context' in res) && 'document' in res) {
         res = res.document;
