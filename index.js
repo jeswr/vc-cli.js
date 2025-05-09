@@ -12,7 +12,7 @@ import fs from 'node:fs/promises';
 import { URL } from 'node:url';
 import dereference from 'rdf-dereference-store';
 import { generateCID } from './cid.js';
-import { createDocumentLoader, documentLoader as defaultDocumentLoader } from './documentLoader.js';
+import { createDocumentLoader } from './documentLoader.js';
 import { _createVerifyData } from './lib/verify.js';
 export { documentLoader } from './documentLoader.js';
 
@@ -111,10 +111,11 @@ export async function generateCIDDocument(controller, options = {}) {
  * @param {string} options.keyId - ID of the key to use for signing
  * @param {string} [options.credentialId] - ID for the credential (optional)
  * @param {string} [options.subjectId] - ID for the credential subject (optional)
+ * @param {Object} [options.documentLoaderContent] - Document loader content (optional)
  * @returns {Promise<Object>} The signed credential
  */
 export async function signCredential(options) {
-  const { cid, privateKeys, document, keyId, credentialId, subjectId } = options;
+  const { cid, privateKeys, document, keyId, credentialId, subjectId, documentLoaderContent } = options;
 
   document.issuer = {
     "id": cid.id
@@ -174,7 +175,7 @@ export async function signCredential(options) {
       signedVC = await jsigs.sign(document, {
         suite,
         purpose: new AssertionProofPurpose(),
-        documentLoader: defaultDocumentLoader
+        documentLoader: createDocumentLoader(documentLoaderContent)
       });
     } catch (error) {
       throw new Error(`Failed to sign document using BBS Signature: ${error.message} [${JSON.stringify(error, null, 2)}]`);
@@ -192,7 +193,7 @@ export async function signCredential(options) {
       signedVC = await vc.issue({
         credential: document,
         suite,
-        documentLoader: defaultDocumentLoader
+        documentLoader: createDocumentLoader(documentLoaderContent)
       });
     } catch (error) {
       throw new Error(`Failed to sign document using Ed25519 Signature: ${error.message}`);
@@ -207,11 +208,12 @@ export async function signCredential(options) {
  * @param {Object} options - Options for verification
  * @param {Object} options.cid - CID document
  * @param {Object} options.document - Verifiable credential to verify
+ * @param {Object} [options.documentLoaderContent] - Document loader content (optional)
  * @returns {Promise<boolean>} Whether the verification was successful
  */
 export async function verifyCredential(options) {
-  const { cid, document } = options;
-  const documentLoader = cidDocumentLoader(cid);
+  const { cid, document, documentLoaderContent } = options;
+  const documentLoader = cidDocumentLoader(cid, documentLoaderContent);
   const verificationMethod = getVerificationMethod(cid, document);
 
   let suite;
@@ -270,10 +272,11 @@ export async function verifyCredential(options) {
  * @param {Object} options - Options for deriving proof
  * @param {Object} options.document - Signed BBS document
  * @param {string[]} options.revealPointers - Array of JSON pointers to reveal
+ * @param {Object} [options.documentLoaderContent] - Document loader content (optional)
  * @returns {Promise<Object>} The derived document
  */
 export async function deriveProof(options) {
-  const { document, revealPointers } = options;
+  const { document, revealPointers, documentLoaderContent } = options;
 
   const cryptosuite = createDiscloseCryptosuite({
     selectivePointers: revealPointers
@@ -284,7 +287,7 @@ export async function deriveProof(options) {
   const derivedDocument = await jsigs.derive(document, {
     suite,
     purpose: new AssertionProofPurpose(),
-    documentLoader: defaultDocumentLoader
+    documentLoader: createDocumentLoader(documentLoaderContent)
   });
 
   return derivedDocument;
@@ -295,15 +298,16 @@ export async function deriveProof(options) {
  * @param {Object} options - Options for preprocessing
  * @param {Object} options.document - Derived BBS document
  * @param {Object} options.cid - CID document
+ * @param {Object} [options.documentLoaderContent] - Document loader content (optional)
  * @returns {Promise<Object>} The preprocessed data
  */
 export async function preprocessBBSVerification(options) {
-  const { document, cid } = options;
+  const { document, cid, documentLoaderContent } = options;
   const verificationMethod = getVerificationMethod(cid, document);
 
   const verifyData = await _createVerifyData({
     document,
-    documentLoader: cidDocumentLoader(cid),
+    documentLoader: cidDocumentLoader(cid, documentLoaderContent),
   });
 
   const keyPair = await Bls12381Multikey.from({
@@ -319,7 +323,7 @@ export async function preprocessBBSVerification(options) {
   });
   const method = await suite.getVerificationMethod({
     proof: document.proof,
-    documentLoader: cidDocumentLoader(cid),
+    documentLoader: cidDocumentLoader(cid, documentLoaderContent),
   });
 
   return {
@@ -339,10 +343,11 @@ export async function preprocessBBSVerification(options) {
  * @param {Object} options - Options for preprocessing
  * @param {Object} options.document - Signed Ed25519 document
  * @param {Object} options.cid - CID document
+ * @param {Object} [options.documentLoaderContent] - Document loader content (optional)
  * @returns {Promise<Object>} The preprocessed data
  */
 export async function preprocessEd25519Verification(options) {
-  const { document, cid } = options;
+  const { document, cid, documentLoaderContent } = options;
   const verificationMethod = getVerificationMethod(cid, document);
 
   const keyPair = await Ed25519VerificationKey2020.from({
@@ -354,8 +359,8 @@ export async function preprocessEd25519Verification(options) {
     verificationMethod: verificationMethod.id
   });
 
-  const canonizedDocument = await suite.canonize({ ...document, proof: null }, {documentLoader: cidDocumentLoader(cid)});
-  const canonizedProof = await suite.canonizeProof(document.proof, {document, documentLoader: cidDocumentLoader(cid)});
+  const canonizedDocument = await suite.canonize({ ...document, proof: null }, {documentLoader: cidDocumentLoader(cid, documentLoaderContent)});
+  const canonizedProof = await suite.canonizeProof(document.proof, {document, documentLoader: cidDocumentLoader(cid, documentLoaderContent)});
 
   const proofHash = await sha256digest({string: canonizedProof});
   const docHash = await sha256digest({string: canonizedDocument});
@@ -389,6 +394,7 @@ export async function preprocessEd25519Verification(options) {
  * @param {Object} options - Options for collection
  * @param {string[]} options.documents - Array of JSON-LD document paths
  * @param {string} options.outputPath - Output path for Turtle file
+ *  
  * @returns {Promise<void>}
  */
 export async function collectDocuments(options) {
@@ -400,7 +406,7 @@ export async function collectDocuments(options) {
 
   const data = await dereference.default(documents, {
     fetch: async (url) => {
-      let res = await defaultDocumentLoader(url);
+      let res = await createDocumentLoader()(url);
 
       if (!('@context' in res) && 'document' in res) {
         res = res.document;
