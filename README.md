@@ -29,6 +29,7 @@ vc-cli generate-cid -c <controller-did> [options]
 - `-k, --keys <path>`: Path to save private keys JSON file
 - `--no-ed25519`: Exclude Ed25519 signature type
 - `--no-bbs`: Exclude BBS+ signature type
+- `--document-loader-content <path>`: Path to JSON file containing predefined document loader responses
 
 #### Examples:
 
@@ -38,6 +39,9 @@ vc-cli generate-cid -c did:example:123
 
 # Generate CID and save to specific files
 vc-cli generate-cid -c did:example:123 -o cid.json -k keys.json
+
+# Generate CID with custom document loader content
+vc-cli generate-cid -c did:example:123 --document-loader-content loader-content.json
 ```
 
 ### Sign Credential
@@ -57,6 +61,7 @@ vc-cli sign-credential -c <cid-path> -k <keys-path> -d <document-path> -i <key-i
 - `-o, --output <path>`: Output path for signed credential (required)
 - `--credential-id <id>`: ID for the credential (optional)
 - `--subject-id <id>`: ID for the credential subject (optional)
+- `--document-loader-content <path>`: Path to JSON file containing predefined document loader responses
 
 #### Example:
 
@@ -64,8 +69,8 @@ vc-cli sign-credential -c <cid-path> -k <keys-path> -d <document-path> -i <key-i
 # Sign a credential with default options
 vc-cli sign-credential -c cid.json -k keys.json -d credential.json -i key-1 -o signed-credential.json
 
-# Sign a credential with custom IDs
-vc-cli sign-credential -c cid.json -k keys.json -d credential.json -i key-1 -o signed-credential.json --credential-id "urn:uuid:123" --subject-id "did:example:subject"
+# Sign a credential with custom IDs and document loader content
+vc-cli sign-credential -c cid.json -k keys.json -d credential.json -i key-1 -o signed-credential.json --credential-id "urn:uuid:123" --subject-id "did:example:subject" --document-loader-content loader-content.json
 ```
 
 ### Verify Credential
@@ -80,11 +85,16 @@ vc-cli verify-credential -c <cid-path> -d <document-path>
 
 - `-c, --cid <path>`: Path to CID document (required)
 - `-d, --document <path>`: Path to verifiable credential to verify (required)
+- `--document-loader-content <path>`: Path to JSON file containing predefined document loader responses
 
 #### Example:
 
 ```bash
+# Verify a credential with default options
 vc-cli verify-credential -c cid.json -d signed-credential.json
+
+# Verify a credential with custom document loader content
+vc-cli verify-credential -c cid.json -d signed-credential.json --document-loader-content loader-content.json
 ```
 
 ### Derive Credential
@@ -100,15 +110,17 @@ vc-cli derive-proof -d <document-path> -r <pointers> -o <output-path>
 - `-d, --document <path>`: Path to signed BBS document (required)
 - `-r, --reveal <pointers>`: Comma-separated list of JSON pointers to reveal (required)
 - `-o, --output <path>`: Output path for derived document (required)
+- `--document-loader-content <path>`: Path to JSON file containing predefined document loader responses
 
 #### Example:
 
 ```bash
 # Derive a credential revealing only specific fields
 vc-cli derive-proof -d signed-credential.json -r '/credentialSubject/givenName,/credentialSubject/familyName' -o derived-credential.json
-```
 
-The derived credential can be verified using the same verification process as the original credential.
+# Derive a credential with custom document loader content
+vc-cli derive-proof -d signed-credential.json -r '/credentialSubject/givenName,/credentialSubject/familyName' -o derived-credential.json --document-loader-content loader-content.json
+```
 
 ### BBS Verify Preprocess
 
@@ -123,6 +135,7 @@ vc-cli bbs-verify-preprocess -d <document-path> -c <cid-path> -o <output-path>
 - `-d, --document <path>`: Path to derived BBS document or directory containing derived BBS documents (required)
 - `-c, --cid <path>`: Path to CID document (required)
 - `-o, --output <path>`: Output path for preprocessed data (file or directory) (required)
+- `--document-loader-content <path>`: Path to JSON file containing predefined document loader responses
 
 #### Example:
 
@@ -130,8 +143,8 @@ vc-cli bbs-verify-preprocess -d <document-path> -c <cid-path> -o <output-path>
 # Preprocess a single derived BBS document
 vc-cli bbs-verify-preprocess -d derived-credential.json -c cid.json -o preprocessed.json
 
-# Preprocess all derived BBS documents in a directory
-vc-cli bbs-verify-preprocess -d ./derived -c cid.json -o ./preprocessed
+# Preprocess with custom document loader content
+vc-cli bbs-verify-preprocess -d derived-credential.json -c cid.json -o preprocessed.json --document-loader-content loader-content.json
 ```
 
 ### Ed25519 Verify Preprocess
@@ -147,6 +160,7 @@ vc-cli ed25519-verify-preprocess -d <document-path> -c <cid-path> -o <output-pat
 - `-d, --document <path>`: Path to signed Ed25519 document or directory containing signed Ed25519 documents (required)
 - `-c, --cid <path>`: Path to CID document (required)
 - `-o, --output <path>`: Output path for preprocessed data (file or directory) (required)
+- `--document-loader-content <path>`: Path to JSON file containing predefined document loader responses
 
 #### Example:
 
@@ -154,8 +168,8 @@ vc-cli ed25519-verify-preprocess -d <document-path> -c <cid-path> -o <output-pat
 # Preprocess a single Ed25519 document
 vc-cli ed25519-verify-preprocess -d signed-credential.json -c cid.json -o preprocessed.json
 
-# Preprocess all Ed25519 documents in a directory
-vc-cli ed25519-verify-preprocess -d ./ed25519 -c cid.json -o ./preprocessed
+# Preprocess with custom document loader content
+vc-cli ed25519-verify-preprocess -d signed-credential.json -c cid.json -o preprocessed.json --document-loader-content loader-content.json
 ```
 
 ### Generate
@@ -177,6 +191,7 @@ vc-cli generate [options]
 - `--distribute`: Distribute documents across CIDs instead of having each CID sign all documents
 - `--collect`: Collect all generated files into a single Turtle file named `collected.ttl` in the output directory
 - `--subject-id <id>`: ID for the credential subject (optional, defaults to a random DID)
+- `--document-loader-content <path>`: Path to JSON file containing predefined document loader responses
 
 #### Example:
 
@@ -184,47 +199,11 @@ vc-cli generate [options]
 # Generate with default options
 vc-cli generate
 
-# Generate with custom CIDs and documents
-vc-cli generate -c "did:example:alice,did:example:bob" -d "./mocks/residence.jsonld,./mocks/education.jsonld"
+# Generate with custom document loader content
+vc-cli generate --document-loader-content loader-content.json
 
-# Generate with only BBS signatures and no derived proofs
-vc-cli generate -s bbs --no-derive
-
-# Generate with documents distributed across CIDs
-vc-cli generate --distribute
-
-# Generate and collect all files into a single Turtle file
-vc-cli generate --collect
-
-# Generate to a custom directory and collect files
-vc-cli generate -o ./my-output --collect
-
-# Generate with a specific credential subject ID
-vc-cli generate --subject-id "did:example:123"
-
-# Generate without preprocessing derived proofs
-vc-cli generate --no-preprocess
-```
-
-The generate command will:
-1. Create CIDs for each specified controller DID
-2. Sign each document with each CID using the specified signature types
-3. Create derived proofs for BBS signatures (unless disabled)
-4. Preprocess derived proofs (unless disabled with --no-preprocess)
-5. Save all generated files in the specified output directory
-6. Verify all generated documents
-7. If `--collect` is specified, collect all generated files into a single Turtle file named `collected.ttl` in the output directory
-
-The output directory structure will be:
-```
-generated/
-├── cids/              # CID documents
-├── bbs/              # BBS signed credentials
-├── ed25519/          # Ed25519 signed credentials
-├── derived/          # Derived BBS proofs
-├── derived-preprocessed/  # Preprocessed verification data for derived BBS proofs
-├── ed25519-preprocessed/ # Preprocessed verification data for Ed25519 credentials
-└── privateKeys.json  # Private keys for all CIDs
+# Generate with custom CIDs, documents, and document loader content
+vc-cli generate -c "did:example:alice,did:example:bob" -d "./mocks/residence.jsonld,./mocks/education.jsonld" --document-loader-content loader-content.json
 ```
 
 ### Collect
@@ -239,19 +218,49 @@ vc-cli collect -d <directory-path> -o <output-path>
 
 - `-d, --directory <path>`: Directory containing JSON-LD documents (required)
 - `-o, --output <path>`: Output path for Turtle file (must end with .ttl) (required)
+- `--document-loader-content <path>`: Path to JSON file containing predefined document loader responses
 
 #### Example:
 
 ```bash
 # Collect all JSON-LD documents from a directory into a single Turtle file
 vc-cli collect -d ./generated -o output.ttl
+
+# Collect with custom document loader content
+vc-cli collect -d ./generated -o output.ttl --document-loader-content loader-content.json
 ```
 
-The collect command will:
-1. Read all JSON-LD files from the specified directory
-2. Combine them into a single Turtle file
-3. Exclude any proof-related triples
-4. Save the result to the specified output file
+## Document Loader Content
+
+The `--document-loader-content` option allows you to provide predefined responses for specific URLs used in JSON-LD document processing. This is useful for:
+
+- Testing with mock data
+- Working offline
+- Ensuring consistent responses
+- Avoiding network requests for known contexts and schemas
+
+The document loader content file should be a JSON file with the following structure:
+
+```json
+{
+  "https://example.org/context.json": {
+    "@context": {
+      // context content
+    }
+  },
+  "https://example.org/schema.json": {
+    // schema content
+  }
+}
+```
+
+When a URL is requested during document processing, the document loader will:
+1. First check if the URL exists in the provided content
+2. If found, return that content immediately
+3. If not found, fall back to the existing caching behavior
+4. Finally, if not in cache, use the default document loader or fetch from the network
+
+This allows for more control over the document loading process and can help improve performance and reliability in various scenarios.
 
 ## Error Handling
 
