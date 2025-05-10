@@ -446,3 +446,15 @@ export async function collectDocuments(options = {}) {
 
   await fs.writeFile(outputPath, turtle);
 }
+
+export async function getDocumentLoaderContent(options) {
+  let documentLoaderContent = {};
+  if (options.documentLoaderContent) {
+    try {
+      documentLoaderContent = JSON.parse(await fs.readFile(options.documentLoaderContent, 'utf8'));
+    } catch (error) {
+      console.error('Error:', error.message);
+    }
+  }
+  return documentLoaderContent;
+}

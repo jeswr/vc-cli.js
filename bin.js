@@ -12,7 +12,8 @@ import {
   deriveProof,
   preprocessBBSVerification,
   preprocessEd25519Verification,
-  collectDocuments
+  collectDocuments,
+  getDocumentLoaderContent
 } from './index.js';
 
 // Get the directory path of the current file
@@ -735,15 +736,4 @@ program
 
 program.parse();
 
-async function getDocumentLoaderContent(options) {
-  let documentLoaderContent = {};
-  if (options.documentLoaderContent) {
-    try {
-      documentLoaderContent = JSON.parse(await fs.readFile(options.documentLoaderContent, 'utf8'));
-    } catch (error) {
-      console.error('Error:', error.message);
-    }
-  }
-  return documentLoaderContent;
-}
 
